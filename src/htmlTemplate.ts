@@ -284,7 +284,11 @@ const CSS_TEMPLATE = /* css */ `
       display: flex; align-items: center; gap: 4px;
       padding: 3px 7px; font-size: 0.78em;
       font-family: var(--ui-font); white-space: nowrap;
+      /* Never let the label slide under Send: the bar is tight in a narrow
+         sidebar, and a clipped "Edits: Defau" reads as a rendering fault. */
+      flex-shrink: 0; max-width: 42%; overflow: hidden;
     }
+    #mode-btn-label { overflow: hidden; text-overflow: ellipsis; }
     .mode-dot {
       width: 6px; height: 6px; border-radius: 50%;
       background: var(--gold); flex-shrink: 0;
@@ -750,7 +754,7 @@ const CSS_TEMPLATE = /* css */ `
     #input:focus { outline: none; }
 
     /* Send / Stop / Queue group (lives in #bottom-bar now) */
-    #input-btns { display: flex; align-items: center; flex-shrink: 0; }
+    #input-btns { display: flex; align-items: center; flex-shrink: 0; gap: 4px; }
     #action-area { display: flex; align-items: center; }
     #input-btns button {
       font-family: var(--ui-font); font-size: 0.78em; font-weight: 600;

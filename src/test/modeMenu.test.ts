@@ -44,8 +44,8 @@ test('names the active mode for the composer button', () => {
 
 test('scopes the button label so it cannot be read as the profile', () => {
   // The header already shows a profile chip that can also read "Default".
-  // Two identical words meaning different things is worse than a longer label.
-  assert.equal(modeButtonLabel(MODES, 'auto'), 'Edits: Auto');
+  // Two identical words meaning different things is worse than a prefix.
+  assert.equal(modeButtonLabel(MODES, 'auto'), 'Edits · Auto');
 });
 
 test('an unknown active id does not blank the button', () => {

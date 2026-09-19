@@ -33,7 +33,7 @@ export function modeButtonLabel(
   modes: readonly EditApprovalModeOption[],
   activeId: string,
 ): string {
-  return `Edits: ${modeLabel(modes, activeId)}`;
+  return `Edits · ${modeLabel(modes, activeId)}`;
 }
 
 export function renderModeMenu(
