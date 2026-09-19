@@ -26,6 +26,7 @@ import { renderModelMenu } from '../modelMenu';
 import { findMentionQuery, splitMentionQuery } from '../mentions';
 import type { MentionSuggestion } from '../mentions';
 import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
+import { findSlashQuery, matchSlashCommands } from '../slashPicker';
 import {
   closeAllDropdowns, buildSessionPicker, setupSessionPickerHandlers,
   buildProfileMenu, setupProfileHandlers,
@@ -429,6 +430,8 @@ let mentionOpen = false;
 let mentionItems: MentionSuggestion[] = [];
 let mentionSelected = 0;
 let mentionStart = 0;
+/** Which catalogue the open popup is showing. */
+let mentionKind: 'mention' | 'slash' = 'mention';
 /** Query the open menu is showing, so a slower reply for an older one is dropped. */
 let mentionQuery = '';
 
@@ -441,9 +444,11 @@ function closeMentionMenu(): void {
 
 function paintMentionMenu(): void {
   if (mentionItems.length === 0) { closeMentionMenu(); return; }
-  const hint = splitMentionQuery(mentionQuery).kind === 'file'
-    ? '<div class="mention-hint">files &middot; type <b>skill:</b> for skills</div>'
-    : '<div class="mention-hint">skills</div>';
+  const hint = mentionKind === 'slash'
+    ? '<div class="mention-hint">commands</div>'
+    : splitMentionQuery(mentionQuery).kind === 'file'
+      ? '<div class="mention-hint">files &middot; type <b>skill:</b> for skills</div>'
+      : '<div class="mention-hint">skills</div>';
   mentionMenu.innerHTML = hint + renderMentionOptions(mentionItems, mentionSelected);
   mentionMenu.style.display = 'block';
   mentionMenu.querySelector('.mention-option.active')?.scrollIntoView({ block: 'nearest' });
@@ -451,6 +456,17 @@ function paintMentionMenu(): void {
 
 function acceptMention(suggestion: MentionSuggestion | undefined): void {
   if (!suggestion) { closeMentionMenu(); return; }
+
+  if (mentionKind === 'slash') {
+    // A slash command is the whole message, so it replaces the text outright
+    // rather than splicing into it. The trailing space lets arguments follow.
+    inputEl.value = `/${suggestion.mention} `;
+    inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+    closeMentionMenu();
+    inputEl.focus();
+    return;
+  }
+
   const applied = applyMentionCompletion({
     text: inputEl.value,
     start: mentionStart,
@@ -464,9 +480,24 @@ function acceptMention(suggestion: MentionSuggestion | undefined): void {
 }
 
 function refreshMentionMenu(): void {
+  // A leading `/` opens the command palette; `@` opens files or skills. Both
+  // render in the same popup, so only the source of the items differs.
+  const slash = findSlashQuery(inputEl.value, inputEl.selectionStart ?? 0);
+  if (slash) {
+    mentionOpen = true;
+    mentionKind = 'slash';
+    mentionStart = 0;
+    mentionQuery = slash.query;
+    mentionItems = matchSlashCommands(S.availableCommands, slash.query);
+    mentionSelected = 0;
+    paintMentionMenu();
+    return;
+  }
+
   const found = findMentionQuery(inputEl.value, inputEl.selectionStart ?? 0);
   if (!found) { closeMentionMenu(); return; }
   mentionOpen = true;
+  mentionKind = 'mention';
   mentionStart = found.start;
   mentionQuery = found.query;
   vscode.postMessage({ type: 'mentionQuery', query: found.query });
@@ -704,9 +735,10 @@ window.addEventListener('message', (e: MessageEvent) => {
       break;
 
     case 'mentionSuggestions': {
-      // Drop a reply that arrived after the query moved on, or once the
-      // picker closed — otherwise a slow lookup reopens a stale menu.
-      if (!mentionOpen || msg.query !== mentionQuery) break;
+      // Drop a reply that arrived after the query moved on, once the picker
+      // closed, or while a slash palette is showing — otherwise a slow file
+      // lookup reopens a stale menu or overwrites the command list.
+      if (!mentionOpen || mentionKind !== 'mention' || msg.query !== mentionQuery) break;
       mentionItems = msg.mentionSuggestions ?? [];
       mentionSelected = 0;
       paintMentionMenu();
