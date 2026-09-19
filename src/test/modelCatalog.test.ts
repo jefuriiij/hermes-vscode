@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildModelGroups } from '../modelCatalog';
+import { buildModelGroups, resolveModelGroups } from '../modelCatalog';
 
 // ACP sends the authenticated inventory on session/new:
 //   name     "Anthropic · claude-opus-5"
@@ -55,4 +55,23 @@ test('falls back to the id prefix when a name carries no provider label', () => 
 test('returns no groups when the server advertises no inventory', () => {
   assert.deepEqual(buildModelGroups(undefined), []);
   assert.deepEqual(buildModelGroups({ availableModels: [] }), []);
+});
+
+test('prefers live inventory over the offline fallback, and keeps the fallback until it arrives', () => {
+  const fallback = [
+    { group: 'Anthropic', items: [{ id: 'a', label: 'a', command: 'anthropic:a' }] },
+  ];
+  const live = {
+    availableModels: [{ modelId: 'anthropic:claude-opus-5', name: 'Anthropic · claude-opus-5' }],
+  };
+
+  // Before any session replies there is nothing to show but the fallback.
+  assert.deepEqual(resolveModelGroups(undefined, fallback), fallback);
+  assert.deepEqual(resolveModelGroups({ availableModels: [] }, fallback), fallback);
+
+  // Once ACP advertises an inventory it wins outright — a stale hardcoded list
+  // must never be merged into or appended to the authoritative one.
+  const resolved = resolveModelGroups(live, fallback);
+  assert.deepEqual(resolved.map(group => group.group), ['Anthropic']);
+  assert.deepEqual(resolved[0].items.map(item => item.command), ['anthropic:claude-opus-5']);
 });

@@ -9,7 +9,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { SessionManager } from './sessionManager';
 import { SessionStore } from './sessionStore';
-import { loadHermesModelGroups, ModelMenuGroup } from './modelCatalog';
+import { loadHermesModelGroups, resolveModelGroups, ModelMenuGroup } from './modelCatalog';
 import { loadHermesSkills, SkillGroup } from './skillCatalog';
 import { buildChatHtml, escapeHtml } from './htmlTemplate';
 import { profileDisplayName } from './profileUi';
@@ -77,7 +77,8 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
   private lifecycleTransition: Promise<void> | undefined;
 
   private readonly store: SessionStore;
-  private readonly modelGroups: ModelMenuGroup[] = loadHermesModelGroups();
+  private readonly fallbackModelGroups: ModelMenuGroup[] = loadHermesModelGroups();
+  private modelGroups: ModelMenuGroup[] = this.fallbackModelGroups;
   private readonly skillGroups: SkillGroup[] = loadHermesSkills();
 
   private selectedSkills: string[] = [];
@@ -203,6 +204,16 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
       }
       if (event.sessionTitle && this.store.renameByAcpSessionId(event.session_id, event.sessionTitle)) {
         this.broadcastSessions(this.store);
+      }
+      // ACP advertises the authenticated inventory on session/new. It is the
+      // only source that knows about local, custom, and named-endpoint
+      // providers, so it replaces the offline fallback as soon as it arrives.
+      if (event.modelState && this.isActiveRuntimeSession(event.session_id)) {
+        const resolved = resolveModelGroups(event.modelState, this.fallbackModelGroups);
+        if (resolved !== this.modelGroups) {
+          this.modelGroups = resolved;
+          this.post({ type: 'modelGroups', modelGroups: resolved });
+        }
       }
       if ((event.model || event.sessionTitle || event.contextUsed !== undefined || event.compressionCount !== undefined)
         && this.isActiveRuntimeSession(event.session_id)) {
