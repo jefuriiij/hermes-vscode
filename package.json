@@ -91,11 +91,19 @@
       }
     ],
     "viewsContainers": {
-      "auxiliarybar": [
+      "secondarySidebar": [
         {
           "id": "hermes",
           "title": "Hermes Agent",
           "icon": "resources/hermes-icon.svg"
+        }
+      ],
+      "activitybar": [
+        {
+          "id": "hermes-primary",
+          "title": "Hermes Agent",
+          "icon": "resources/hermes-icon.svg",
+          "when": "hermes:noSecondarySidebar"
         }
       ]
     },
@@ -112,6 +120,14 @@
           "type": "webview",
           "id": "hermes.chatView",
           "name": "Chat"
+        }
+      ],
+      "hermes-primary": [
+        {
+          "type": "webview",
+          "id": "hermes.chatViewPrimary",
+          "name": "Chat",
+          "when": "hermes:noSecondarySidebar"
         }
       ]
     },

@@ -421,7 +421,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.registerWebviewViewProvider(ChatPanelProvider.viewId, panel, {
       webviewOptions: { retainContextWhenHidden: true },
     }),
+    // The same provider serves both containers. The secondary sidebar is the
+    // real home — it sits beside the Explorer instead of replacing it — but a
+    // fork without one would show no icon at all, so an activity-bar container
+    // is registered behind a context key as the fallback.
+    vscode.window.registerWebviewViewProvider(ChatPanelProvider.primaryViewId, panel, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
   );
+  // VS Code exposes no API to query secondary-sidebar support, so this is set
+  // from the known-good case: stable VS Code and its forks have had one since
+  // 1.64. Flip it in a fork that does not.
+  void vscode.commands.executeCommand('setContext', 'hermes:noSecondarySidebar', false);
 
   // Commands
   context.subscriptions.push(
