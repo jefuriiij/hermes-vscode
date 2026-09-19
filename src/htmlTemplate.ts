@@ -124,7 +124,6 @@ ${CSS_TEMPLATE}
     </div>
   </div>
   <div id="background-process-status"></div>
-  <div id="todo-overlay"></div>
   <div id="input-drag"></div>
   <div id="composer">
   <div id="mention-menu" style="display:none"></div>
@@ -542,43 +541,6 @@ const CSS_TEMPLATE = /* css */ `
     #background-process-status .process-ids { color: var(--vscode-descriptionForeground); }
     @keyframes process-pulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
 
-    /* ── Todo overlay ──────────────────────────────── */
-    /* Rendered as a card anchored directly above the composer. Matches the
-       composer's horizontal margins so the two read as one stacked unit. */
-    #todo-overlay {
-      font-family: var(--ui-font); font-size: 0.82em;
-      margin: 0 8px 4px; padding: 6px 10px;
-      background: var(--vscode-sideBarSectionHeader-background, rgba(128,128,128,0.05));
-      border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.3));
-      border-radius: 8px;
-      flex-shrink: 0; display: none;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    }
-    #todo-overlay .todo-header {
-      font-weight: 700; font-size: 0.78em;
-      text-transform: uppercase; letter-spacing: 0.06em;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: 4px;
-    }
-    #todo-overlay .todo-item {
-      display: flex; align-items: flex-start; gap: 6px;
-      padding: 2px 0;
-    }
-    #todo-overlay .todo-icon {
-      flex-shrink: 0; width: 1.2em; text-align: center;
-    }
-    #todo-overlay .todo-icon.completed { color: #4EC9B0; }
-    #todo-overlay .todo-icon.in_progress { color: var(--gold); }
-    #todo-overlay .todo-icon.pending { opacity: 0.4; }
-    #todo-overlay .todo-text { flex: 1; }
-    #todo-overlay .todo-text.completed {
-      text-decoration: line-through; opacity: 0.5;
-    }
-    #todo-overlay .todo-text.in_progress { color: var(--gold); font-weight: 500; }
-    #todo-overlay .todo-summary {
-      font-size: 0.8em; opacity: 0.5; margin-top: 3px;
-    }
-
     /* History divider */
     .history-divider {
       text-align: center;
@@ -848,6 +810,45 @@ const CSS_TEMPLATE = /* css */ `
       color: var(--vscode-foreground); cursor: pointer;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* ── Plan block ──────────────────────────────────
+       Inline checklist, owned by the turn that produced it. */
+    .plan-block {
+      margin: 6px 0 6px 18px;
+      border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-family: var(--ui-font); font-size: 0.78em;
+      background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.06));
+    }
+    .plan-t {
+      font-weight: 700; font-size: 0.92em;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--gold); margin-bottom: 5px;
+    }
+    .plan-n { opacity: 0.6; font-weight: 400; letter-spacing: 0; }
+    .plan-i {
+      display: flex; align-items: flex-start; gap: 6px;
+      padding: 2px 0; color: var(--vscode-foreground); opacity: 0.85;
+    }
+    .plan-bx {
+      display: inline-block; width: 11px; height: 11px; flex-shrink: 0;
+      margin-top: 2px; border-radius: 3px; font-size: 9px;
+      line-height: 11px; text-align: center;
+      border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.45));
+    }
+    .plan-i.done { opacity: 0.55; }
+    .plan-i.done .plan-bx {
+      color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+      border-color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+    }
+    /* The step in progress is the one thing worth finding instantly. */
+    .plan-i.now { opacity: 1; font-weight: 600; }
+    .plan-i.now .plan-bx {
+      border-color: var(--gold);
+      box-shadow: inset 0 0 0 2px var(--gold);
+    }
+    .plan-i.skip { opacity: 0.4; text-decoration: line-through; }
+
     /* ── Tool cards ──────────────────────────────────
        Boxed rendering for calls whose output is worth reading inline.
        Quick lookups keep the flat .msg.tool row above. */

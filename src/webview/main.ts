@@ -19,7 +19,7 @@ import { primaryAgentActivity, shouldPulseComposer } from '../agentActivity';
 import { renderQueuedMessagesMarkup } from './queueControls';
 import {
   renderMarkdown, appendDiv, appendMessage, showWaiting,
-  formatToolDisplay, renderTodoOverlay, detectTodoUpdate,
+  formatToolDisplay, detectTodoUpdate,
   loadHistory, fmtTok,
 } from './renderers';
 import { renderModelMenu } from '../modelMenu';
@@ -27,6 +27,7 @@ import { findMentionQuery, splitMentionQuery } from '../mentions';
 import type { MentionSuggestion } from '../mentions';
 import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
 import { findSlashQuery, matchSlashCommands } from '../slashPicker';
+import { renderPlanBlock } from '../planBlock';
 import {
   closeAllDropdowns, buildSessionPicker, setupSessionPickerHandlers,
   buildProfileMenu, setupProfileHandlers,
@@ -72,7 +73,6 @@ const overflowMenu     = document.getElementById('overflow-menu') as HTMLDivElem
 const emptyState       = document.getElementById('empty-state') as HTMLDivElement;
 const sessionPicker    = document.getElementById('session-picker') as HTMLDivElement;
 const logoMark         = document.getElementById('logo-mark')!;
-const todoOverlay      = document.getElementById('todo-overlay')!;
 const backgroundProcessStatus = document.getElementById('background-process-status')!;
 const skillsBtn        = document.getElementById('skills-btn') as HTMLButtonElement;
 const skillsMenu       = document.getElementById('skills-menu') as HTMLDivElement;
@@ -479,6 +479,25 @@ function acceptMention(suggestion: MentionSuggestion | undefined): void {
   inputEl.focus();
 }
 
+/**
+ * Place the plan inline, so it belongs to the turn that produced it and
+ * scrolls away with it. The old floating overlay pinned above the composer
+ * showed a plan from ten turns ago as if it were still current.
+ *
+ * One block per turn: an updated plan replaces its own rather than stacking
+ * near-identical checklists down the transcript.
+ */
+function showPlan(todos: TodoItem[]): void {
+  const html = renderPlanBlock(todos);
+  if (!html) return;
+  const last = messagesEl.lastElementChild;
+  const host = last?.classList.contains('plan-wrap')
+    ? (last as HTMLElement)
+    : appendDiv(messagesEl, 'msg plan-wrap');
+  host.innerHTML = html;
+  autoScroll();
+}
+
 function refreshMentionMenu(): void {
   // A leading `/` opens the command palette; `@` opens files or skills. Both
   // render in the same popup, so only the source of the items differs.
@@ -681,7 +700,8 @@ window.addEventListener('message', (e: MessageEvent) => {
           S.currentAgentEl.classList.remove('agent');
           S.currentAgentEl.classList.add('system');
         } else {
-          detectTodoUpdate(S.currentAgentText, todoOverlay);
+          const scraped = detectTodoUpdate(S.currentAgentText);
+          if (scraped) showPlan(scraped);
         }
         renderMarkdown(S.currentAgentEl, S.currentAgentText);
         autoScroll();
@@ -796,7 +816,7 @@ window.addEventListener('message', (e: MessageEvent) => {
       }
       if (msg.todoState && typeof msg.todoState === 'object') {
         const state = msg.todoState as { todos?: TodoItem[] };
-        if (state.todos) renderTodoOverlay(todoOverlay, state.todos);
+        if (state.todos) showPlan(state.todos);
       }
       if (msg.contextAnnotation) {
         const userMsgs = messagesEl.querySelectorAll('.msg.user');
