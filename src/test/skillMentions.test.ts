@@ -27,6 +27,59 @@ test('a plain mention still means a file', () => {
   assert.deepEqual(splitMentionQuery(found.query), { kind: 'file', term: 'src/a.ts' });
 });
 
+test('ranks name matches above description-only matches', () => {
+  const groups = [
+    {
+      category: 'software-development',
+      skills: [
+        // Matches only in the description — the word appears in prose.
+        { name: 'framer-agent-cli', description: 'Inspect/debug/edit Framer sites', category: 'software-development' },
+        { name: 'systematic-debugging', description: '4-phase root cause', category: 'software-development' },
+      ],
+    },
+  ];
+
+  assert.deepEqual(
+    matchSkillMentions(groups, 'debug').map(s => s.name),
+    ['systematic-debugging', 'framer-agent-cli'],
+  );
+});
+
+test('ranks a prefix match above a mid-name match', () => {
+  const groups = [
+    {
+      category: 'x',
+      skills: [
+        { name: 'node-inspect-debugger', description: '', category: 'x' },
+        { name: 'debug-tools', description: '', category: 'x' },
+      ],
+    },
+  ];
+
+  assert.deepEqual(
+    matchSkillMentions(groups, 'debug').map(s => s.name),
+    ['debug-tools', 'node-inspect-debugger'],
+  );
+});
+
+test('ranks a word-boundary match above a mid-word one', () => {
+  const groups = [
+    {
+      category: 'x',
+      skills: [
+        // `debugging` contains `debug` mid-word; `-debug` starts a segment.
+        { name: 'frontend-runtime-debugging', description: '', category: 'x' },
+        { name: 'python-debugpy', description: '', category: 'x' },
+        { name: 'systematic-debugging', description: '', category: 'x' },
+      ],
+    },
+  ];
+
+  // All three contain the term, so a plain includes() left the useful one
+  // buried under alphabetical order.
+  assert.equal(matchSkillMentions(groups, 'debugging')[0].name, 'systematic-debugging');
+});
+
 test('matches a skill on name and on category', () => {
   assert.deepEqual(
     matchSkillMentions(GROUPS, 'debug').map(s => s.mention),
