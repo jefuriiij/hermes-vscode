@@ -443,7 +443,7 @@ function paintMentionMenu(): void {
   if (mentionItems.length === 0) { closeMentionMenu(); return; }
   mentionMenu.innerHTML = renderMentionOptions(mentionItems, mentionSelected);
   mentionMenu.style.display = 'block';
-  mentionMenu.querySelector('.model-option.active')?.scrollIntoView({ block: 'nearest' });
+  mentionMenu.querySelector('.mention-option.active')?.scrollIntoView({ block: 'nearest' });
 }
 
 function acceptMention(suggestion: MentionSuggestion | undefined): void {
@@ -477,7 +477,7 @@ inputEl.addEventListener('blur', () => setTimeout(closeMentionMenu, 120));
 mentionMenu.addEventListener('mousedown', (e) => {
   // mousedown, not click: blur would close the menu before click landed.
   e.preventDefault();
-  const option = (e.target as HTMLElement).closest<HTMLElement>('.model-option');
+  const option = (e.target as HTMLElement).closest<HTMLElement>('.mention-option');
   const mention = option?.dataset.mention;
   if (mention) acceptMention(mentionItems.find(item => item.mention === mention));
 });

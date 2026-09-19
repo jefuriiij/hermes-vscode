@@ -73,7 +73,7 @@ export function renderMentionOptions(
       const dim = directory
         ? `<span style="opacity:0.45;font-size:0.82em"> ${directory}</span>`
         : '';
-      return `<div class="model-option${active}" data-mention="${escapeAttr(suggestion.mention)}">`
+      return `<div class="mention-option${active}" data-mention="${escapeAttr(suggestion.mention)}">`
         + `${name}${dim}</div>`;
     })
     .join('');

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyMentionCompletion, moveMentionSelection } from '../mentionPicker';
+import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
 
 // The picker is driven from the composer: findMentionQuery (mentions.ts) says
 // whether the caret is inside a mention, the host returns candidates, and
@@ -52,4 +52,31 @@ test('wraps selection at both ends so arrow keys never dead-end', () => {
 test('selection stays at zero when there is nothing to move through', () => {
   assert.equal(moveMentionSelection(0, 0, 'down'), 0);
   assert.equal(moveMentionSelection(0, 0, 'up'), 0);
+});
+
+test('marks the highlighted row without the model menu\'s selected-check semantics', () => {
+  const html = renderMentionOptions(
+    [
+      { mention: 'a.ts', name: 'a.ts', directory: '', uri: 'file:///a.ts' },
+      { mention: 'src/b.ts', name: 'b.ts', directory: 'src/', uri: 'file:///src/b.ts' },
+    ],
+    1,
+  );
+
+  // `.mention-option`, not `.model-option`: the latter renders a ✓ via ::before,
+  // which would read as "already selected" in a list of candidates.
+  assert.ok(!html.includes('model-option'));
+  assert.equal((html.match(/mention-option active/g) ?? []).length, 1);
+  assert.match(html, /mention-option active" data-mention="src\/b\.ts"/);
+  assert.match(html, /data-mention="a\.ts"/);
+});
+
+test('escapes suggestion text so a filename cannot inject markup', () => {
+  const html = renderMentionOptions(
+    [{ mention: 'a"b.ts', name: '<b>x</b>', directory: '', uri: 'file:///x' }],
+    0,
+  );
+
+  assert.ok(!html.includes('<b>x</b>'));
+  assert.match(html, /data-mention="a&quot;b\.ts"/);
 });

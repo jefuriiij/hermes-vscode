@@ -837,6 +837,19 @@ const CSS_TEMPLATE = /* css */ `
     .model-option:hover { background: var(--gold-subtle); color: var(--gold); }
     .model-option.active { color: var(--gold); font-weight: 600; }
     .model-option.active::before { content: '✓ '; }
+    /* Mention rows share the dropdown look but not its semantics: active
+       here means highlighted by the arrow keys, not currently selected,
+       so no checkmark. Long paths ellipsize rather than scroll sideways. */
+    .mention-option {
+      padding: 5px 10px; font-size: 0.85em; font-family: var(--ui-font);
+      color: var(--vscode-foreground); cursor: pointer;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .mention-option:hover { background: var(--gold-subtle); color: var(--gold); }
+    .mention-option.active {
+      background: var(--vscode-list-activeSelectionBackground, var(--gold-subtle));
+      color: var(--vscode-list-activeSelectionForeground, var(--gold));
+    }
     .model-group-label {
       padding: 4px 10px 2px; font-size: 0.7em; font-family: var(--ui-font);
       color: var(--vscode-descriptionForeground); opacity: 0.7;
