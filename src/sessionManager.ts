@@ -26,6 +26,7 @@
 
 import { AcpClient } from './acpClient';
 import { EditApprovalModeId, normalizeEditApprovalMode } from './editApprovalMode';
+import { buildPromptBlocks, type ResolvedMention } from './mentions';
 import type { SessionUpdateEvent, SessionUpdateHandler } from './types';
 import {
   extractTextContent, deduplicateChunk,
@@ -254,6 +255,12 @@ export class SessionManager {
     cwd: string,
     onSessionBound?: (sessionId: string) => void,
     beforeSessionBinding?: () => Promise<void>,
+    /**
+     * Resolved `@` mentions. Each becomes a `resource_link` block that Hermes
+     * reads from disk itself, so a mention costs one URI rather than the file's
+     * contents inlined into the prompt.
+     */
+    mentions?: ResolvedMention[],
   ): Promise<void> {
     if (this.activePromptTurn) throw new Error('Prompt already active');
     const turn: PromptTurn = {
@@ -278,7 +285,7 @@ export class SessionManager {
       try {
         await this.client.call('session/prompt', {
           sessionId,
-          prompt: [{ type: 'text', text }],
+          prompt: buildPromptBlocks(text, mentions ?? []),
         });
       } catch (err) {
         if (turn.cancelled) throw new Error('Cancelled');

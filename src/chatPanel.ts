@@ -17,6 +17,7 @@ import { buildChatHtml, escapeHtml } from './htmlTemplate';
 import { profileDisplayName } from './profileUi';
 import { BackgroundMessageAccumulator, routeBackgroundMessage } from './backgroundMessageAccumulator';
 import { sendPromptWithSessionBinding } from './promptSessionBinding';
+import { resolveMentions } from './mentionResolver';
 import { sessionReadyUiMessages, sessionSwitchUiMessages } from './sessionSwitchUi';
 import type { SessionContextUsage } from './sessionSwitchUi';
 import { DEFAULT_AVAILABLE_COMMANDS, isKnownSlashCommand } from './slashCommands';
@@ -965,6 +966,14 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
     }
 
     try {
+      // Mentions resolve against the workspace here, in the host: the webview
+      // has no vscode API. Each match becomes a resource_link Hermes reads from
+      // disk, so the prompt carries a URI rather than the file's contents.
+      const mentions = await resolveMentions(prompt);
+      if (mentions.length > 0) {
+        this.log(`[ui] resolved ${mentions.length} @mention(s)`);
+      }
+
       // SessionManager establishes turn cancellation ownership before binding,
       // including reconnect, while the binding callback persists ACP ownership
       // before session/prompt.
@@ -974,6 +983,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
         prompt,
         cwd,
         async () => { await this.profileController?.ensureConnected?.(); },
+        mentions,
       );
     } catch (err) {
       const msg = String(err);
