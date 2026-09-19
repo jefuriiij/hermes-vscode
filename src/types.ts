@@ -81,6 +81,8 @@ export interface SessionUpdateEvent {
   toolStatus?: string;
   toolCallId?: string;
   toolDetail?: string;
+  /** Formatted tool output: results, diffs, command text. */
+  toolContent?: string;
   toolKind?: string;
   toolLocations?: string[];
   todoState?: TodoState;
@@ -116,6 +118,8 @@ export interface ToWebview {
   toolStatus?: string;
   toolCallId?: string;
   toolDetail?: string;
+  /** Formatted tool output: results, diffs, command text. */
+  toolContent?: string;
   toolKind?: string;
   toolLocations?: string[];
   todoState?: TodoState;

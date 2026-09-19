@@ -61,6 +61,45 @@ export interface ParsedToolCall {
   locations: string[];
   detail?: string;
   todoState?: TodoState;
+  /** Formatted tool output: results, diffs, command text. */
+  content?: string;
+}
+
+/**
+ * Text from an ACP tool call's content blocks.
+ *
+ * `acp_adapter/tools.py` attaches formatted results to every polished tool and
+ * diffs for write_file/patch. Blocks nest as `{type:'content', content:{type:
+ * 'text', text}}`; anything that is not text (images, resource links) has no
+ * inline representation here and is skipped.
+ */
+export function extractToolContent(update: RawUpdate): string | undefined {
+  const blocks = update.content;
+  if (!Array.isArray(blocks)) return undefined;
+
+  const parts: string[] = [];
+  for (const block of blocks) {
+    const outer = block as { content?: unknown; text?: unknown };
+    const inner = outer.content as { text?: unknown } | undefined;
+    const text = typeof inner?.text === 'string'
+      ? inner.text
+      : typeof outer.text === 'string' ? outer.text : undefined;
+    if (text) parts.push(text);
+  }
+
+  return parts.length > 0 ? parts.join('\n') : undefined;
+}
+
+/**
+ * Whether a tool call ended in failure.
+ *
+ * ACP's ToolCallStatus is pending|in_progress|completed|failed. The UI
+ * previously compared against `'error'`, which the agent never sends, so a
+ * failed tool showed a spinner forever. `'error'` is still accepted so an
+ * older agent keeps working.
+ */
+export function isToolFailure(status: string | undefined): boolean {
+  return status === 'failed' || status === 'error';
 }
 
 /** Parse a tool_call update into typed fields. */
@@ -87,7 +126,7 @@ export function parseToolCall(update: RawUpdate): ParsedToolCall {
     }
   }
 
-  return { title, status, toolCallId, kind, locations, detail, todoState };
+  return { title, status, toolCallId, kind, locations, detail, todoState, content: extractToolContent(update) };
 }
 
 // ── Tool call update parsing ─────────────────────────
@@ -97,6 +136,8 @@ export interface ParsedToolCallUpdate {
   status: string;
   todoState?: TodoState;
   backgroundProcess?: BackgroundProcessState;
+  /** Formatted tool output — usually arrives here, not on the initial call. */
+  content?: string;
 }
 
 /** Parse a Hermes terminal/process tool result into persistent process state. */
@@ -169,7 +210,7 @@ export function parseToolCallUpdate(update: RawUpdate): ParsedToolCallUpdate {
   const todoState = extractTodoFromUpdate(update);
   const backgroundProcess = parseBackgroundProcessFromToolUpdate(update);
 
-  return { toolCallId, status, todoState, backgroundProcess };
+  return { toolCallId, status, todoState, backgroundProcess, content: extractToolContent(update) };
 }
 
 // ── Todo detection ───────────────────────────────────

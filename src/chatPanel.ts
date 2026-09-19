@@ -19,6 +19,7 @@ import { BackgroundMessageAccumulator, routeBackgroundMessage } from './backgrou
 import { sendPromptWithSessionBinding } from './promptSessionBinding';
 import { resolveMentions, findMentionCandidates } from './mentionResolver';
 import { parseMentions, splitMentionQuery } from './mentions';
+import { isToolFailure } from './protocol';
 import { matchSkillMentions, skillNamesFrom } from './skillMentions';
 import { sessionReadyUiMessages, sessionSwitchUiMessages } from './sessionSwitchUi';
 import type { SessionContextUsage } from './sessionSwitchUi';
@@ -286,7 +287,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
             this.toolCallLocations.delete(event.toolCallId);
           }
         } else if (event.toolTitle) {
-          const icon = event.toolStatus === 'done' || event.toolStatus === 'completed' ? '✓' : event.toolStatus === 'error' ? '✗' : '⋯';
+          const icon = event.toolStatus === 'done' || event.toolStatus === 'completed' ? '✓' : isToolFailure(event.toolStatus) ? '✗' : '⋯';
           this.lastTurnTools.push({ role: 'tool', text: `${icon} ${event.toolTitle}${event.toolDetail ? ': ' + event.toolDetail : ''}` });
           // Store locations for file-open on completion
           if (event.toolCallId && event.toolLocations?.length && event.toolKind) {
@@ -301,6 +302,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
             toolStatus: event.toolStatus,
             toolCallId: event.toolCallId,
             toolDetail: event.toolDetail,
+            toolContent: event.toolContent,
             toolKind: event.toolKind,
             toolLocations: event.toolLocations,
           });
@@ -916,7 +918,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
     if (event.toolTitle !== undefined) {
       captured = true;
       if (event.toolTitle) {
-        const icon = event.toolStatus === 'done' || event.toolStatus === 'completed' ? '✓' : event.toolStatus === 'error' ? '✗' : '⋯';
+        const icon = event.toolStatus === 'done' || event.toolStatus === 'completed' ? '✓' : isToolFailure(event.toolStatus) ? '✗' : '⋯';
         buffered.tools.push({
           role: 'tool',
           text: `${icon} ${event.toolTitle}${event.toolDetail ? ': ' + event.toolDetail : ''}`,

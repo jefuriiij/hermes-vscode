@@ -29,6 +29,8 @@ import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } fr
 import { findSlashQuery, matchSlashCommands } from '../slashPicker';
 import { renderPlanBlock } from '../planBlock';
 import { renderModeMenu, modeButtonLabel } from '../modeMenu';
+import { toolDensity, renderToolCard } from '../toolCard';
+import { isToolFailure } from '../protocol';
 import type { EditApprovalModeOption } from '../editApprovalMode';
 import {
   closeAllDropdowns, buildSessionPicker, setupSessionPickerHandlers,
@@ -641,7 +643,7 @@ window.addEventListener('message', (e: MessageEvent) => {
         const existing = document.querySelector(`[data-tool-id="${msg.toolCallId}"]`);
         if (existing) {
           const isDone = msg.toolStatus === 'done' || msg.toolStatus === 'completed';
-          const isError = msg.toolStatus === 'error';
+          const isError = isToolFailure(msg.toolStatus);
           const statusEl = existing.querySelector('.tool-status');
           if (statusEl) {
             statusEl.textContent = isDone ? '✓' : isError ? '✗' : '⋯';
@@ -655,19 +657,32 @@ window.addEventListener('message', (e: MessageEvent) => {
       S.currentAgentEl = null; S.currentAgentText = '';
       document.getElementById('waiting')?.remove();
       const isDone = msg.toolStatus === 'done' || msg.toolStatus === 'completed';
-      const isError = msg.toolStatus === 'error';
+      const isError = isToolFailure(msg.toolStatus);
       const statusIcon = isDone ? '✓' : isError ? '✗' : '⋯';
       const statusClass = isDone ? ' done' : isError ? ' error' : '';
       const toolEl = appendDiv(messagesEl, 'msg tool');
       if (msg.toolCallId) toolEl.dataset.toolId = msg.toolCallId;
       const { label, info } = formatToolDisplay(msg.toolName ?? '', msg.toolKind, msg.toolLocations, msg.toolDetail);
-      // ACP's tool_call update carries a title, kind, locations and a short
-      // input preview — not the tool's output. Until a content field exists
-      // upstream there is nothing to put inside a card, so every call renders
-      // as the flat row. The card renderer is wired and tested, waiting on
-      // that field rather than on UI work.
-      const infoHtml = info ? `<span class="tool-detail">${DOMPurify.sanitize(info)}</span>` : '';
-      toolEl.innerHTML = `<span class="tool-status${statusClass}">${statusIcon}</span><span class="tool-name">${label}</span>${infoHtml}`;
+      const body = msg.toolContent ?? '';
+
+      // Two densities: a call whose output matters gets a card with the
+      // content inline; a quick lookup stays a single flat row.
+      if (toolDensity({ label, body }) === 'card') {
+        toolEl.className = 'msg tool-wrap';
+        toolEl.innerHTML = renderToolCard({
+          label,
+          target: info,
+          status: isDone ? '' : (msg.toolStatus ?? ''),
+          body,
+          state: isError ? 'error' : isDone ? 'done' : 'running',
+        });
+        toolEl.querySelector('.tool-card-h')?.addEventListener('click', () => {
+          toolEl.querySelector('.tool-card')?.classList.toggle('collapsed');
+        });
+      } else {
+        const infoHtml = info ? `<span class="tool-detail">${DOMPurify.sanitize(info)}</span>` : '';
+        toolEl.innerHTML = `<span class="tool-status${statusClass}">${statusIcon}</span><span class="tool-name">${label}</span>${infoHtml}`;
+      }
       autoScroll();
       break;
     }

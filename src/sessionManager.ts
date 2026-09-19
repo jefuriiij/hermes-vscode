@@ -450,6 +450,7 @@ export class SessionManager {
         }
         if (parsed.locations.length) event.toolLocations = parsed.locations;
         if (parsed.detail) event.toolDetail = parsed.detail;
+        if (parsed.content) event.toolContent = parsed.content;
         if (parsed.todoState) {
           event.todoState = parsed.todoState;
           this.log(`[session] todo tool_call: ${parsed.todoState.todos.length} items`);
@@ -474,6 +475,7 @@ export class SessionManager {
           }
         }
         if (cancelledOwner && !event.delegationRegistration) return;
+        if (parsed.content) event.toolContent = parsed.content;
         if (parsed.backgroundProcess) event.backgroundProcess = parsed.backgroundProcess;
         if (parsed.todoState) {
           event.todoState = parsed.todoState;
