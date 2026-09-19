@@ -156,6 +156,12 @@ ${CSS_TEMPLATE}
     <div id="logo-mark"><img src="${logoUri}" alt="Hermes"/></div>
     <div class="bar-spacer"></div>
     <div id="input-btns">
+      <div class="btn-wrap">
+        <button class="cmd-btn mode-btn" id="mode-btn" title="Edit approval mode">
+          <span class="mode-dot"></span><span id="mode-btn-label">Ask</span><span class="mode-cv">▾</span>
+        </button>
+        <div id="mode-menu" style="display:none"></div>
+      </div>
       <div id="action-area">
         <button id="send-btn">Send</button>
         <div id="busy-btns">
@@ -271,6 +277,41 @@ const CSS_TEMPLATE = /* css */ `
     }
     #status-context.warn { color: var(--gold); opacity: 1; }
     #status-context.crit { color: #C94040; opacity: 1; }
+    /* ── Mode selector ───────────────────────────────
+       Sits beside Send because it decides whether Hermes asks before
+       editing — worth seeing while typing, not buried in a palette. */
+    .mode-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 3px 7px; font-size: 0.78em;
+      font-family: var(--ui-font); white-space: nowrap;
+    }
+    .mode-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--gold); flex-shrink: 0;
+    }
+    .mode-cv { opacity: 0.5; font-size: 0.85em; }
+    #mode-menu {
+      position: absolute; bottom: 100%; right: 0;
+      margin-bottom: 4px; min-width: 190px; z-index: 220;
+      background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+      border: 1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.35));
+      border-radius: 6px; overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+    .mode-option {
+      padding: 6px 10px; cursor: pointer;
+      font-family: var(--ui-font); font-size: 0.82em;
+    }
+    .mode-option:hover { background: var(--vscode-list-hoverBackground, rgba(128,128,128,0.1)); }
+    .mode-option.active .mode-name { color: var(--gold); font-weight: 600; }
+    .mode-option.active .mode-name::before { content: '✓ '; }
+    .mode-name { display: block; }
+    .mode-desc {
+      display: block; margin-top: 1px;
+      font-size: 0.85em; opacity: 0.55;
+      color: var(--vscode-descriptionForeground);
+    }
+
     /* Prompt-cache share: a cost signal, so it sits quietly beside the
        window headline rather than competing with it. */
     .tok-cache {

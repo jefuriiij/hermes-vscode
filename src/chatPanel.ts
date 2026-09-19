@@ -11,7 +11,7 @@ import { SessionManager } from './sessionManager';
 import { SessionStore } from './sessionStore';
 import { loadHermesModelGroups, resolveModelGroups, ModelMenuGroup } from './modelCatalog';
 import { resolveModeOptions } from './modeCatalog';
-import { EDIT_APPROVAL_MODES, EditApprovalModeOption } from './editApprovalMode';
+import { EDIT_APPROVAL_MODES, EditApprovalModeOption, normalizeEditApprovalMode } from './editApprovalMode';
 import { loadHermesSkills, SkillGroup } from './skillCatalog';
 import { buildChatHtml, escapeHtml } from './htmlTemplate';
 import { profileDisplayName } from './profileUi';
@@ -226,6 +226,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
       // Hermes ships today and goes stale the moment a mode is added or renamed.
       if (event.modeState && this.isActiveRuntimeSession(event.session_id)) {
         this.modeOptions = resolveModeOptions(event.modeState);
+        this.broadcastModeState();
       }
       if ((event.model || event.sessionTitle || event.contextUsed !== undefined || event.compressionCount !== undefined)
         && this.isActiveRuntimeSession(event.session_id)) {
@@ -375,6 +376,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
       this.contextUsageFor(active?.acpSessionId),
     )) this.post(update);
     this.broadcastProfileState();
+    this.broadcastModeState();
     this.broadcastSessions(this.store);
     if (active && active.messages.length > 0) {
       this.post({ type: 'loadHistory', history: active.messages, activeSessionId: this.store.activeId });
@@ -612,6 +614,18 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
         ? matchSkillMentions(this.skillGroups, split.term)
         : await findMentionCandidates(split.term);
       this.post({ type: 'mentionSuggestions', query, mentionSuggestions: suggestions });
+
+    } else if (msg.type === 'setMode' && msg.text) {
+      // The composer selector and the Command Palette both land here, so the
+      // mode is applied and broadcast once rather than diverging.
+      const cwd = this.resolveWorkingDirectory();
+      try {
+        await this.session.setEditApprovalMode(normalizeEditApprovalMode(msg.text), cwd);
+        this.log(`[ui] edit approval mode ${msg.text}`);
+      } catch (err) {
+        this.log(`[ui] mode change failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      this.broadcastModeState();
 
     } else if (msg.type === 'switchModel' && msg.model) {
       this.log(`[ui] switch model ${msg.model}`);
@@ -1102,6 +1116,23 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
    */
   public get editApprovalModeOptions(): readonly EditApprovalModeOption[] {
     return this.modeOptions;
+  }
+
+  /**
+   * Push the mode list and current selection to the composer selector.
+   *
+   * Sent whenever the modes change (session/new advertises them) or the mode
+   * itself changes, so the button label never drifts from the real setting.
+   */
+  private broadcastModeState(): void {
+    this.post({
+      type: 'modeState',
+      modeOptions: this.modeOptions,
+      // Optional-called: a session that has not bound yet (and the test
+      // doubles) may not expose a mode, and the selector should still render
+      // its options rather than the panel failing to initialise.
+      activeMode: this.session.getEditApprovalMode?.(),
+    });
   }
 
   public refreshProfileState(): void {

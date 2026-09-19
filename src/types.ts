@@ -5,6 +5,7 @@
 
 import type { SkillGroup } from './skillCatalog';
 import type { AcpModelState, ModelMenuGroup } from './modelCatalog';
+import type { EditApprovalModeOption } from './editApprovalMode';
 import type { MentionSuggestion } from './mentions';
 import type { AcpModeState } from './modeCatalog';
 import type { ProfileMenuItem } from './profileUi';
@@ -109,7 +110,7 @@ export interface ToWebview {
     | 'append' | 'backgroundNotification' | 'thinking' | 'toolCall' | 'done'
     | 'error' | 'status' | 'notice' | 'clear' | 'busy' | 'queueState'
     | 'statusBar' | 'sessionList' | 'loadHistory' | 'profileList' | 'modelGroups'
-    | 'mentionSuggestions';
+    | 'mentionSuggestions' | 'modeState';
   text?: string;
   toolName?: string;
   toolStatus?: string;
@@ -124,6 +125,10 @@ export interface ToWebview {
   mentionSuggestions?: MentionSuggestion[];
   /** Query these suggestions answer, so a stale reply can be discarded. */
   query?: string;
+  /** Edit-approval modes the agent advertised, for the composer selector. */
+  modeOptions?: readonly EditApprovalModeOption[];
+  /** Currently selected edit-approval mode id. */
+  activeMode?: string;
   status?: string;
   active?: boolean;
   queued?: number;
@@ -162,7 +167,7 @@ export interface FromWebview {
     | 'attachFile' | 'pasteImage' | 'dropFiles' | 'clearAttachments'
     | 'toggleSkill' | 'renameSession' | 'deleteSession'
     | 'selectProfile' | 'customProfile' | 'restartHermes' | 'requestCommands'
-    | 'mentionQuery';
+    | 'mentionQuery' | 'setMode';
   text?: string;
   requestId?: string;
   sessionId?: string;

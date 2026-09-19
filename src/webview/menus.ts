@@ -22,11 +22,13 @@ export function closeAllDropdowns(els: {
   skillsMenu: HTMLElement; overflowMenu: HTMLElement;
   profileMenu?: HTMLElement;
   cmdArgPopover?: HTMLElement;
+  modeMenu?: HTMLElement;
 }): void {
   els.modelMenu.style.display = 'none';
   els.sessionPicker.style.display = 'none';
   els.skillsMenu.style.display = 'none';
   els.overflowMenu.style.display = 'none';
+  if (els.modeMenu) els.modeMenu.style.display = 'none';
   if (els.profileMenu) els.profileMenu.style.display = 'none';
   if (els.cmdArgPopover) els.cmdArgPopover.style.display = 'none';
 }

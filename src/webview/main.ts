@@ -28,6 +28,8 @@ import type { MentionSuggestion } from '../mentions';
 import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
 import { findSlashQuery, matchSlashCommands } from '../slashPicker';
 import { renderPlanBlock } from '../planBlock';
+import { renderModeMenu, modeLabel } from '../modeMenu';
+import type { EditApprovalModeOption } from '../editApprovalMode';
 import {
   closeAllDropdowns, buildSessionPicker, setupSessionPickerHandlers,
   buildProfileMenu, setupProfileHandlers,
@@ -57,6 +59,9 @@ const dragHandle       = document.getElementById('input-drag') as HTMLDivElement
 const inputRow         = document.getElementById('input-row') as HTMLDivElement;
 const composer         = document.getElementById('composer') as HTMLDivElement;
 const mentionMenu      = document.getElementById('mention-menu') as HTMLDivElement;
+const modeBtn          = document.getElementById('mode-btn') as HTMLButtonElement;
+const modeBtnLabel     = document.getElementById('mode-btn-label')!;
+const modeMenu         = document.getElementById('mode-menu') as HTMLDivElement;
 const statusSessionEl  = document.getElementById('status-session') as HTMLButtonElement;
 const statusContextEl  = document.getElementById('status-context')!;
 const statusVersionEl  = document.getElementById('status-version')!;
@@ -87,7 +92,7 @@ inputEl.disabled = true;
 sendBtn.disabled = true;
 queueBtn.disabled = true;
 
-const dropdownEls = { modelMenu, sessionPicker, skillsMenu, overflowMenu, profileMenu, cmdArgPopover };
+const dropdownEls = { modelMenu, sessionPicker, skillsMenu, overflowMenu, profileMenu, cmdArgPopover, modeMenu };
 const statusEls = { statusVersionEl, modelBtnHeader, modelMenu, statusSessionEl, statusContextEl, ctxBarWrap, ctxBar, ctxBarFresh };
 const closeFn = () => closeAllDropdowns(dropdownEls);
 
@@ -498,6 +503,31 @@ function showPlan(todos: TodoItem[]): void {
   autoScroll();
 }
 
+// ── Mode selector ────────────────────────────────────
+
+let modeOptions: readonly EditApprovalModeOption[] = [];
+let activeModeId = '';
+
+modeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = modeMenu.style.display === 'block';
+  closeAllDropdowns(dropdownEls);
+  if (open) return;
+  modeMenu.innerHTML = renderModeMenu(modeOptions, activeModeId);
+  modeMenu.style.display = 'block';
+});
+
+modeMenu.addEventListener('click', (e) => {
+  const option = (e.target as HTMLElement).closest<HTMLElement>('.mode-option');
+  const mode = option?.dataset.mode;
+  if (!mode) return;
+  e.stopPropagation();
+  modeMenu.style.display = 'none';
+  // The host owns the mode and echoes it back via modeState, so the button
+  // reflects what actually took effect rather than what was clicked.
+  vscode.postMessage({ type: 'setMode', text: mode });
+});
+
 function refreshMentionMenu(): void {
   // A leading `/` opens the command palette; `@` opens files or skills. Both
   // render in the same popup, so only the source of the items differs.
@@ -767,6 +797,17 @@ window.addEventListener('message', (e: MessageEvent) => {
       mentionItems = msg.mentionSuggestions ?? [];
       mentionSelected = 0;
       paintMentionMenu();
+      break;
+    }
+
+    case 'modeState': {
+      modeOptions = msg.modeOptions ?? [];
+      activeModeId = msg.activeMode ?? '';
+      modeBtnLabel.textContent = modeLabel(modeOptions, activeModeId);
+      // Keep an open menu in sync rather than showing a stale checkmark.
+      if (modeMenu.style.display === 'block') {
+        modeMenu.innerHTML = renderModeMenu(modeOptions, activeModeId);
+      }
       break;
     }
 
