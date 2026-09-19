@@ -612,6 +612,11 @@ window.addEventListener('message', (e: MessageEvent) => {
       const toolEl = appendDiv(messagesEl, 'msg tool');
       if (msg.toolCallId) toolEl.dataset.toolId = msg.toolCallId;
       const { label, info } = formatToolDisplay(msg.toolName ?? '', msg.toolKind, msg.toolLocations, msg.toolDetail);
+      // ACP's tool_call update carries a title, kind, locations and a short
+      // input preview — not the tool's output. Until a content field exists
+      // upstream there is nothing to put inside a card, so every call renders
+      // as the flat row. The card renderer is wired and tested, waiting on
+      // that field rather than on UI work.
       const infoHtml = info ? `<span class="tool-detail">${DOMPurify.sanitize(info)}</span>` : '';
       toolEl.innerHTML = `<span class="tool-status${statusClass}">${statusIcon}</span><span class="tool-name">${label}</span>${infoHtml}`;
       autoScroll();

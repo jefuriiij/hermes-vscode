@@ -390,11 +390,14 @@ const CSS_TEMPLATE = /* css */ `
       align-self: flex-end;
       max-width: 88%;
       white-space: pre-wrap;
-      background: var(--vscode-textBlockQuote-background, rgba(128,128,128,0.15));
-      border-left: 3px solid var(--gold);
+      /* Subtle blue bubble so a user turn is distinguishable at a glance.
+         Agent turns stay flat: they interleave text, tool cards and plan
+         blocks, and wrapping those would nest boxes inside boxes. */
+      background: var(--vscode-inputOption-activeBackground, rgba(40, 90, 150, 0.22));
+      border: 1px solid var(--vscode-focusBorder, rgba(80, 140, 200, 0.35));
       color: var(--vscode-foreground);
-      border-radius: 4px;
-      padding: 6px 10px;
+      border-radius: 8px;
+      padding: 7px 11px;
     }
     .msg.user .context-annotation {
       font-family: var(--ui-font);
@@ -845,6 +848,40 @@ const CSS_TEMPLATE = /* css */ `
       color: var(--vscode-foreground); cursor: pointer;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* ── Tool cards ──────────────────────────────────
+       Boxed rendering for calls whose output is worth reading inline.
+       Quick lookups keep the flat .msg.tool row above. */
+    .tool-card {
+      margin: 6px 0 6px 18px;
+      border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--vscode-textCodeBlock-background, rgba(128,128,128,0.06));
+    }
+    .tool-card.error { border-color: var(--vscode-errorForeground, #f48771); }
+    .tool-card-h {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 9px; cursor: pointer;
+      font-family: var(--ui-font); font-size: 0.78em;
+      border-bottom: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.2));
+    }
+    .tool-card-h:hover { background: var(--vscode-list-hoverBackground, rgba(128,128,128,0.08)); }
+    .tool-card-ic { color: var(--gold); font-size: 0.9em; }
+    .tool-card.error .tool-card-ic { color: var(--vscode-errorForeground, #f48771); }
+    .tool-card-nm { color: var(--vscode-foreground); opacity: 0.9; }
+    .tool-card-st { margin-left: auto; opacity: 0.55; font-size: 0.92em; }
+    .tool-card-b {
+      padding: 7px 9px; margin: 0;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 0.78em; line-height: 1.45;
+      white-space: pre-wrap; word-break: break-word;
+      max-height: 260px; overflow-y: auto;
+      color: var(--vscode-foreground); opacity: 0.85;
+    }
+    .tool-card.collapsed .tool-card-b { display: none; }
+    .tool-del { color: var(--vscode-gitDecoration-deletedResourceForeground, #f48771); }
+    .tool-add { color: var(--vscode-gitDecoration-addedResourceForeground, #89d185); }
+
     .mention-option:hover { background: var(--gold-subtle); color: var(--gold); }
     .mention-option.active {
       background: var(--vscode-list-activeSelectionBackground, var(--gold-subtle));
