@@ -52,6 +52,28 @@ export interface MentionSuggestion {
 const MENTION_BODY = '[^\\s@]*';
 const MENTION_PATTERN = new RegExp(`(^|\\s)@(${MENTION_BODY})`, 'g');
 
+/** Which catalogue a mention query is searching. */
+export interface MentionQueryKind {
+  kind: 'file' | 'skill';
+  /** The query with any `skill:` prefix stripped. */
+  term: string;
+}
+
+/**
+ * Classify a mention query.
+ *
+ * `@skill:debug` searches skills; anything else searches workspace files. The
+ * picker needs the distinction to know which catalogue to offer, and the
+ * sender needs it so a skill is never resolved as a file path.
+ */
+export function splitMentionQuery(query: string): MentionQueryKind {
+  const prefix = 'skill:';
+  if (query.toLowerCase().startsWith(prefix)) {
+    return { kind: 'skill', term: query.slice(prefix.length) };
+  }
+  return { kind: 'file', term: query };
+}
+
 /**
  * Find the mention the caret is currently inside, if any.
  *

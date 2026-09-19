@@ -850,6 +850,15 @@ const CSS_TEMPLATE = /* css */ `
       background: var(--vscode-list-activeSelectionBackground, var(--gold-subtle));
       color: var(--vscode-list-activeSelectionForeground, var(--gold));
     }
+    /* Names which catalogue is showing, and advertises the skill: prefix,
+       which is otherwise undiscoverable. */
+    .mention-hint {
+      padding: 4px 10px; font-size: 0.7em; font-family: var(--ui-font);
+      color: var(--vscode-descriptionForeground); opacity: 0.8;
+      border-bottom: 1px solid var(--vscode-dropdown-border, rgba(128,128,128,0.25));
+      position: sticky; top: 0;
+      background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+    }
     .model-group-label {
       padding: 4px 10px 2px; font-size: 0.7em; font-family: var(--ui-font);
       color: var(--vscode-descriptionForeground); opacity: 0.7;

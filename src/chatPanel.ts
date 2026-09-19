@@ -18,6 +18,8 @@ import { profileDisplayName } from './profileUi';
 import { BackgroundMessageAccumulator, routeBackgroundMessage } from './backgroundMessageAccumulator';
 import { sendPromptWithSessionBinding } from './promptSessionBinding';
 import { resolveMentions, findMentionCandidates } from './mentionResolver';
+import { parseMentions, splitMentionQuery } from './mentions';
+import { matchSkillMentions, skillNamesFrom } from './skillMentions';
 import { sessionReadyUiMessages, sessionSwitchUiMessages } from './sessionSwitchUi';
 import type { SessionContextUsage } from './sessionSwitchUi';
 import { DEFAULT_AVAILABLE_COMMANDS, isKnownSlashCommand } from './slashCommands';
@@ -604,8 +606,12 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
       // The webview has no vscode API, so file lookup happens here and the
       // matches are posted back. Fire-and-forget: a stale reply is discarded by
       // the webview when the query has already moved on.
-      const suggestions = await findMentionCandidates(msg.query ?? '');
-      this.post({ type: 'mentionSuggestions', query: msg.query ?? '', mentionSuggestions: suggestions });
+      const query = msg.query ?? '';
+      const split = splitMentionQuery(query);
+      const suggestions = split.kind === 'skill'
+        ? matchSkillMentions(this.skillGroups, split.term)
+        : await findMentionCandidates(split.term);
+      this.post({ type: 'mentionSuggestions', query, mentionSuggestions: suggestions });
 
     } else if (msg.type === 'switchModel' && msg.model) {
       this.log(`[ui] switch model ${msg.model}`);
@@ -958,10 +964,14 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
         this.log(`[ui] attached IDE context (${ctx.length} chars)`);
       }
 
-      // Inject the skills captured with this composer submission.
-      if (request.selectedSkills.length > 0) {
-        prompt = `I advise you to use the following skills: ${request.selectedSkills.join(', ')}\n\n${prompt}`;
-        this.log(`[ui] advised skills: ${request.selectedSkills.join(', ')}`);
+      // Inject the skills captured with this composer submission, plus any
+      // named inline with @skill:. Both routes end in the same advisory, so a
+      // mention is a shortcut for the toolbar menu rather than a new mechanism.
+      const mentionedSkills = skillNamesFrom(parseMentions(text));
+      const advisedSkills = [...new Set([...request.selectedSkills, ...mentionedSkills])];
+      if (advisedSkills.length > 0) {
+        prompt = `I advise you to use the following skills: ${advisedSkills.join(', ')}\n\n${prompt}`;
+        this.log(`[ui] advised skills: ${advisedSkills.join(', ')}`);
       }
 
       // Attach the file paths captured with this composer submission.

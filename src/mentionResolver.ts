@@ -8,6 +8,7 @@
 
 import * as vscode from 'vscode';
 import { parseMentions, type ResolvedMention, type MentionSuggestion } from './mentions';
+import { SKILL_PREFIX } from './skillMentions';
 
 /** Cap results so a bare `@` in a large repo cannot stall the picker. */
 const MAX_SUGGESTIONS = 50;
@@ -60,6 +61,11 @@ export async function resolveMentions(text: string): Promise<ResolvedMention[]> 
 
   const resolved: ResolvedMention[] = [];
   for (const mention of mentions) {
+    // `@skill:` names a Hermes skill, not a path. It becomes an advisory in
+    // the prompt text, so searching the workspace for it would always miss.
+    if (mention.startsWith(SKILL_PREFIX)) {
+      continue;
+    }
     const normalized = mention.replace(/\\/g, '/');
     // Anchor on the full relative path so `@src/a.ts` cannot match `lib/a.ts`.
     const matches = await vscode.workspace.findFiles(`**/${normalized}`, EXCLUDE, 2);

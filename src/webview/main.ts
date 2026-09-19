@@ -23,7 +23,7 @@ import {
   loadHistory, fmtTok,
 } from './renderers';
 import { renderModelMenu } from '../modelMenu';
-import { findMentionQuery } from '../mentions';
+import { findMentionQuery, splitMentionQuery } from '../mentions';
 import type { MentionSuggestion } from '../mentions';
 import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
 import {
@@ -441,7 +441,10 @@ function closeMentionMenu(): void {
 
 function paintMentionMenu(): void {
   if (mentionItems.length === 0) { closeMentionMenu(); return; }
-  mentionMenu.innerHTML = renderMentionOptions(mentionItems, mentionSelected);
+  const hint = splitMentionQuery(mentionQuery).kind === 'file'
+    ? '<div class="mention-hint">files &middot; type <b>skill:</b> for skills</div>'
+    : '<div class="mention-hint">skills</div>';
+  mentionMenu.innerHTML = hint + renderMentionOptions(mentionItems, mentionSelected);
   mentionMenu.style.display = 'block';
   mentionMenu.querySelector('.mention-option.active')?.scrollIntoView({ block: 'nearest' });
 }
