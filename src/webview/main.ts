@@ -28,7 +28,7 @@ import type { MentionSuggestion } from '../mentions';
 import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
 import { findSlashQuery, matchSlashCommands } from '../slashPicker';
 import { renderPlanBlock } from '../planBlock';
-import { renderModeMenu, modeLabel } from '../modeMenu';
+import { renderModeMenu, modeButtonLabel } from '../modeMenu';
 import type { EditApprovalModeOption } from '../editApprovalMode';
 import {
   closeAllDropdowns, buildSessionPicker, setupSessionPickerHandlers,
@@ -803,7 +803,9 @@ window.addEventListener('message', (e: MessageEvent) => {
     case 'modeState': {
       modeOptions = msg.modeOptions ?? [];
       activeModeId = msg.activeMode ?? '';
-      modeBtnLabel.textContent = modeLabel(modeOptions, activeModeId);
+      modeBtnLabel.textContent = modeButtonLabel(modeOptions, activeModeId);
+      // Drives the dot colour: the CSS keys off this attribute.
+      modeBtn.dataset.mode = activeModeId;
       // Keep an open menu in sync rather than showing a stale checkmark.
       if (modeMenu.style.display === 'block') {
         modeMenu.innerHTML = renderModeMenu(modeOptions, activeModeId);

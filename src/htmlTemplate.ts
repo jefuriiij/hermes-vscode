@@ -158,7 +158,7 @@ ${CSS_TEMPLATE}
     <div id="input-btns">
       <div class="btn-wrap">
         <button class="cmd-btn mode-btn" id="mode-btn" title="Edit approval mode">
-          <span class="mode-dot"></span><span id="mode-btn-label">Ask</span><span class="mode-cv">▾</span>
+          <span class="mode-dot"></span><span id="mode-btn-label">Edits</span><span class="mode-cv">▾</span>
         </button>
         <div id="mode-menu" style="display:none"></div>
       </div>
@@ -288,6 +288,15 @@ const CSS_TEMPLATE = /* css */ `
     .mode-dot {
       width: 6px; height: 6px; border-radius: 50%;
       background: var(--gold); flex-shrink: 0;
+    }
+    /* The dot carries the risk, not just decoration: green when Hermes asks
+       before touching a file, amber once it stops asking. */
+    .mode-btn[data-mode="default"] .mode-dot {
+      background: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+    }
+    .mode-btn[data-mode="dont_ask"] .mode-dot,
+    .mode-btn[data-mode="accept_edits"] .mode-dot {
+      background: var(--gold);
     }
     .mode-cv { opacity: 0.5; font-size: 0.85em; }
     #mode-menu {

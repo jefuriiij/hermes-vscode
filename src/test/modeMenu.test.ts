@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { renderModeMenu, modeLabel } from '../modeMenu';
+import { renderModeMenu, modeLabel, modeButtonLabel } from '../modeMenu';
 import type { EditApprovalModeOption } from '../editApprovalMode';
 
 // `id` is a narrow union in production. These fixtures deliberately include
@@ -40,6 +40,12 @@ test('falls back to the id when a mode has no label', () => {
 
 test('names the active mode for the composer button', () => {
   assert.equal(modeLabel(MODES, 'auto'), 'Auto');
+});
+
+test('scopes the button label so it cannot be read as the profile', () => {
+  // The header already shows a profile chip that can also read "Default".
+  // Two identical words meaning different things is worse than a longer label.
+  assert.equal(modeButtonLabel(MODES, 'auto'), 'Edits: Auto');
 });
 
 test('an unknown active id does not blank the button', () => {

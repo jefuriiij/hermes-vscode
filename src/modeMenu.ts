@@ -22,6 +22,20 @@ export function modeLabel(
   return match?.label || activeId;
 }
 
+/**
+ * Label for the composer button.
+ *
+ * Scoped with "Edits:" because the header already carries a profile chip that
+ * can read "Default" too — two identical words meaning different things is
+ * worse than a slightly longer label.
+ */
+export function modeButtonLabel(
+  modes: readonly EditApprovalModeOption[],
+  activeId: string,
+): string {
+  return `Edits: ${modeLabel(modes, activeId)}`;
+}
+
 export function renderModeMenu(
   modes: readonly EditApprovalModeOption[],
   activeId: string,
