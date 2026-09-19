@@ -59,8 +59,6 @@ export interface ProfileController {
 
 export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Disposable {
   public static readonly viewId = 'hermes.chatView';
-  /** Activity-bar fallback for forks without a secondary sidebar. */
-  public static readonly primaryViewId = 'hermes.chatViewPrimary';
 
   private view?: vscode.WebviewView;
   private busy = false;
