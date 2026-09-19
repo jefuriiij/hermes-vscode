@@ -127,6 +127,7 @@ ${CSS_TEMPLATE}
   <div id="todo-overlay"></div>
   <div id="input-drag"></div>
   <div id="composer">
+  <div id="mention-menu" style="display:none"></div>
   <div id="context-row">
     <div id="attach-chip"></div>
   </div>
@@ -692,6 +693,7 @@ const CSS_TEMPLATE = /* css */ `
     /* ── Composer (textarea + toolbar wrapped in one glowing pill) ── */
     #composer {
       margin: 4px 8px 8px;
+      position: relative;
       background: var(--vscode-input-background);
       border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.3));
       border-radius: 8px;
@@ -817,6 +819,16 @@ const CSS_TEMPLATE = /* css */ `
       border-top: none; border-radius: 0 0 4px 4px;
       min-width: 180px; z-index: 200; overflow: hidden;
       max-height: 350px; overflow-y: auto;
+    }
+    /* Mention picker: anchored above the composer, not below like the
+       header dropdowns, because the composer sits at the bottom of the view. */
+    #mention-menu {
+      position: absolute; bottom: 100%; left: 8px; right: 8px;
+      background: var(--vscode-dropdown-background, var(--vscode-sideBar-background));
+      border: 1px solid var(--vscode-dropdown-border, var(--vscode-sideBarSectionHeader-border));
+      border-radius: 4px; margin-bottom: 4px;
+      z-index: 220; overflow-y: auto; max-height: 240px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
     }
     .model-option {
       padding: 5px 10px; font-size: 0.85em; font-family: var(--ui-font);

@@ -17,7 +17,7 @@ import { buildChatHtml, escapeHtml } from './htmlTemplate';
 import { profileDisplayName } from './profileUi';
 import { BackgroundMessageAccumulator, routeBackgroundMessage } from './backgroundMessageAccumulator';
 import { sendPromptWithSessionBinding } from './promptSessionBinding';
-import { resolveMentions } from './mentionResolver';
+import { resolveMentions, findMentionCandidates } from './mentionResolver';
 import { sessionReadyUiMessages, sessionSwitchUiMessages } from './sessionSwitchUi';
 import type { SessionContextUsage } from './sessionSwitchUi';
 import { DEFAULT_AVAILABLE_COMMANDS, isKnownSlashCommand } from './slashCommands';
@@ -599,6 +599,13 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
       this.lastTurnText = '';
       this.lastTurnTools = [];
       await this.session.cancel();
+
+    } else if (msg.type === 'mentionQuery') {
+      // The webview has no vscode API, so file lookup happens here and the
+      // matches are posted back. Fire-and-forget: a stale reply is discarded by
+      // the webview when the query has already moved on.
+      const suggestions = await findMentionCandidates(msg.query ?? '');
+      this.post({ type: 'mentionSuggestions', query: msg.query ?? '', mentionSuggestions: suggestions });
 
     } else if (msg.type === 'switchModel' && msg.model) {
       this.log(`[ui] switch model ${msg.model}`);

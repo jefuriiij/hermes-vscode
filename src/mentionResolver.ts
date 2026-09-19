@@ -7,22 +7,14 @@
  */
 
 import * as vscode from 'vscode';
-import { parseMentions, type ResolvedMention } from './mentions';
+import { parseMentions, type ResolvedMention, type MentionSuggestion } from './mentions';
 
 /** Cap results so a bare `@` in a large repo cannot stall the picker. */
 const MAX_SUGGESTIONS = 50;
 /** Exclude heavy directories the user will never want to mention. */
 const EXCLUDE = '**/{node_modules,.git,dist,out,build,.next,coverage}/**';
 
-export interface MentionSuggestion {
-  /** Text inserted after `@`, workspace-relative and slash-normalised. */
-  mention: string;
-  /** Basename, shown as the primary label. */
-  name: string;
-  /** Containing directory, shown as the dim suffix. */
-  directory: string;
-  uri: string;
-}
+export type { MentionSuggestion };
 
 function toSuggestion(uri: vscode.Uri): MentionSuggestion {
   const relative = vscode.workspace.asRelativePath(uri, false).replace(/\\/g, '/');

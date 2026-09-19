@@ -23,6 +23,9 @@ import {
   loadHistory, fmtTok,
 } from './renderers';
 import { renderModelMenu } from '../modelMenu';
+import { findMentionQuery } from '../mentions';
+import type { MentionSuggestion } from '../mentions';
+import { applyMentionCompletion, moveMentionSelection, renderMentionOptions } from '../mentionPicker';
 import {
   closeAllDropdowns, buildSessionPicker, setupSessionPickerHandlers,
   buildProfileMenu, setupProfileHandlers,
@@ -51,6 +54,7 @@ const queueItems       = document.getElementById('queue-items') as HTMLDivElemen
 const dragHandle       = document.getElementById('input-drag') as HTMLDivElement;
 const inputRow         = document.getElementById('input-row') as HTMLDivElement;
 const composer         = document.getElementById('composer') as HTMLDivElement;
+const mentionMenu      = document.getElementById('mention-menu') as HTMLDivElement;
 const statusSessionEl  = document.getElementById('status-session') as HTMLButtonElement;
 const statusContextEl  = document.getElementById('status-context')!;
 const statusVersionEl  = document.getElementById('status-version')!;
@@ -395,7 +399,87 @@ stopBtn.addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 queueBtn.addEventListener('click', send);
 sendBtn.addEventListener('click', send);
 inputEl.addEventListener('keydown', (e) => {
+  // The mention picker owns navigation keys while it is open, so Enter
+  // accepts a file instead of sending a half-typed message.
+  if (mentionOpen) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      mentionSelected = moveMentionSelection(
+        mentionSelected, mentionItems.length, e.key === 'ArrowDown' ? 'down' : 'up');
+      paintMentionMenu();
+      return;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      acceptMention(mentionItems[mentionSelected]);
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeMentionMenu();
+      return;
+    }
+  }
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+// ── Mention picker ───────────────────────────────────
+
+let mentionOpen = false;
+let mentionItems: MentionSuggestion[] = [];
+let mentionSelected = 0;
+let mentionStart = 0;
+/** Query the open menu is showing, so a slower reply for an older one is dropped. */
+let mentionQuery = '';
+
+function closeMentionMenu(): void {
+  mentionOpen = false;
+  mentionItems = [];
+  mentionSelected = 0;
+  mentionMenu.style.display = 'none';
+}
+
+function paintMentionMenu(): void {
+  if (mentionItems.length === 0) { closeMentionMenu(); return; }
+  mentionMenu.innerHTML = renderMentionOptions(mentionItems, mentionSelected);
+  mentionMenu.style.display = 'block';
+  mentionMenu.querySelector('.model-option.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+function acceptMention(suggestion: MentionSuggestion | undefined): void {
+  if (!suggestion) { closeMentionMenu(); return; }
+  const applied = applyMentionCompletion({
+    text: inputEl.value,
+    start: mentionStart,
+    caret: inputEl.selectionStart ?? inputEl.value.length,
+    mention: suggestion.mention,
+  });
+  inputEl.value = applied.text;
+  inputEl.setSelectionRange(applied.caret, applied.caret);
+  closeMentionMenu();
+  inputEl.focus();
+}
+
+function refreshMentionMenu(): void {
+  const found = findMentionQuery(inputEl.value, inputEl.selectionStart ?? 0);
+  if (!found) { closeMentionMenu(); return; }
+  mentionOpen = true;
+  mentionStart = found.start;
+  mentionQuery = found.query;
+  vscode.postMessage({ type: 'mentionQuery', query: found.query });
+}
+
+inputEl.addEventListener('input', refreshMentionMenu);
+// Clicking or arrowing out of the mention closes it; `input` alone misses that.
+inputEl.addEventListener('click', refreshMentionMenu);
+inputEl.addEventListener('blur', () => setTimeout(closeMentionMenu, 120));
+
+mentionMenu.addEventListener('mousedown', (e) => {
+  // mousedown, not click: blur would close the menu before click landed.
+  e.preventDefault();
+  const option = (e.target as HTMLElement).closest<HTMLElement>('.model-option');
+  const mention = option?.dataset.mention;
+  if (mention) acceptMention(mentionItems.find(item => item.mention === mention));
 });
 
 queueItems.addEventListener('click', (e) => {
@@ -615,6 +699,16 @@ window.addEventListener('message', (e: MessageEvent) => {
       buildSlashCommandMenu(overflowMenu, S.availableCommands);
       renderAgentBar();
       break;
+
+    case 'mentionSuggestions': {
+      // Drop a reply that arrived after the query moved on, or once the
+      // picker closed — otherwise a slow lookup reopens a stale menu.
+      if (!mentionOpen || msg.query !== mentionQuery) break;
+      mentionItems = msg.mentionSuggestions ?? [];
+      mentionSelected = 0;
+      paintMentionMenu();
+      break;
+    }
 
     case 'modelGroups': {
       // ACP advertised the real inventory; replace the menu that was baked in

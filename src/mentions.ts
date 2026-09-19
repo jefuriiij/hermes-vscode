@@ -27,6 +27,23 @@ export interface ResolvedMention {
 }
 
 /**
+ * A candidate offered by the composer's `@` picker.
+ *
+ * Declared here rather than beside the resolver so `types.ts` — which the
+ * webview bundle imports — never has a path to a module that requires
+ * `vscode`.
+ */
+export interface MentionSuggestion {
+  /** Text inserted after `@`, workspace-relative and slash-normalised. */
+  mention: string;
+  /** Basename, shown as the primary label. */
+  name: string;
+  /** Containing directory, shown as the dim suffix. */
+  directory: string;
+  uri: string;
+}
+
+/**
  * Characters that may appear in a mention.
  *
  * Whitespace ends one. `@` is excluded so `user@example.com` cannot be read as

@@ -5,6 +5,7 @@
 
 import type { SkillGroup } from './skillCatalog';
 import type { AcpModelState, ModelMenuGroup } from './modelCatalog';
+import type { MentionSuggestion } from './mentions';
 import type { AcpModeState } from './modeCatalog';
 import type { ProfileMenuItem } from './profileUi';
 import type { QueuedWebviewMessage } from './webviewQueue';
@@ -107,7 +108,8 @@ export interface ToWebview {
   type:
     | 'append' | 'backgroundNotification' | 'thinking' | 'toolCall' | 'done'
     | 'error' | 'status' | 'notice' | 'clear' | 'busy' | 'queueState'
-    | 'statusBar' | 'sessionList' | 'loadHistory' | 'profileList' | 'modelGroups';
+    | 'statusBar' | 'sessionList' | 'loadHistory' | 'profileList' | 'modelGroups'
+    | 'mentionSuggestions';
   text?: string;
   toolName?: string;
   toolStatus?: string;
@@ -118,6 +120,10 @@ export interface ToWebview {
   todoState?: TodoState;
   backgroundProcesses?: BackgroundProcessState[];
   modelGroups?: ModelMenuGroup[];
+  /** Candidate files for the composer's `@` picker. */
+  mentionSuggestions?: MentionSuggestion[];
+  /** Query these suggestions answer, so a stale reply can be discarded. */
+  query?: string;
   status?: string;
   active?: boolean;
   queued?: number;
@@ -155,7 +161,8 @@ export interface FromWebview {
     | 'newSession' | 'switchSession'
     | 'attachFile' | 'pasteImage' | 'dropFiles' | 'clearAttachments'
     | 'toggleSkill' | 'renameSession' | 'deleteSession'
-    | 'selectProfile' | 'customProfile' | 'restartHermes' | 'requestCommands';
+    | 'selectProfile' | 'customProfile' | 'restartHermes' | 'requestCommands'
+    | 'mentionQuery';
   text?: string;
   requestId?: string;
   sessionId?: string;
@@ -163,6 +170,8 @@ export interface FromWebview {
   data?: string;
   ext?: string;
   uris?: string[];
+  /** Text typed after `@`, sent as the composer's mention query. */
+  query?: string;
 }
 
 // ── Attachment ───────────────────────────────────────
