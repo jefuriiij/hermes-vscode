@@ -71,7 +71,11 @@
     "commands": [
       {
         "command": "hermes.openChat",
-        "title": "Hermes: Open Chat"
+        "title": "Hermes: Open Chat",
+        "icon": {
+          "light": "resources/hermes-icon.svg",
+          "dark": "resources/hermes-icon.svg"
+        }
       },
       {
         "command": "hermes.newSession",
@@ -168,6 +172,14 @@
           "description": "Enable diagnostic ACP logs in the Hermes output channel."
         }
       }
+    },
+    "menus": {
+      "editor/title": [
+        {
+          "command": "hermes.openChat",
+          "group": "navigation"
+        }
+      ]
     }
   },
   "scripts": {
