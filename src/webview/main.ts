@@ -617,6 +617,15 @@ window.addEventListener('message', (e: MessageEvent) => {
   const msg = e.data as ToWebview;
 
   switch (msg.type) {
+    case 'userEcho': {
+      // A queued prompt the agent just began answering: render it as a user
+      // turn so the reply that follows is not orphaned.
+      if (S.pendingText) flushPending();
+      appendMessage(messagesEl, 'user', msg.text ?? '');
+      autoScroll();
+      break;
+    }
+
     case 'append':
       S.pendingText += msg.text ?? '';
       scheduleFlush();

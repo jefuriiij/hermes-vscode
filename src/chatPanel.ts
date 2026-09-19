@@ -91,7 +91,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
 
   private selectedSkills: string[] = [];
   private attachedFiles: { name: string; path: string }[] = [];
-  private toolCallLocations = new Map<string, { kind: string; paths: string[] }>();
+  private toolCallLocations = new Map<string, { kind: string; paths: string[]; lines?: (number | undefined)[] }>();
   private readonly mediaRoot: string;
 
   constructor(
@@ -280,9 +280,9 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
           if (event.toolStatus === 'completed' && event.toolCallId) {
             const info = this.toolCallLocations.get(event.toolCallId);
             if (info && info.paths.length > 0 && (info.kind === 'edit' || info.kind === 'read')) {
-              for (const filePath of info.paths) {
-                this.openFileInEditor(filePath, info.kind === 'edit');
-              }
+              info.paths.forEach((filePath, i) => {
+                this.openFileInEditor(filePath, info.kind === 'edit', info.lines?.[i]);
+              });
             }
             this.toolCallLocations.delete(event.toolCallId);
           }
@@ -294,6 +294,7 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
             this.toolCallLocations.set(event.toolCallId, {
               kind: event.toolKind,
               paths: event.toolLocations,
+              lines: event.toolLocationLines,
             });
           }
           this.post({
@@ -305,10 +306,16 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
             toolContent: event.toolContent,
             toolKind: event.toolKind,
             toolLocations: event.toolLocations,
+            toolLocationLines: event.toolLocationLines,
           });
         }
       }
       // Forward todo state updates to webview
+      if (event.userEcho) {
+        // A queued prompt the agent just started answering. Rendered as a user
+        // turn so the reply is not orphaned above an invisible question.
+        this.post({ type: 'userEcho', text: event.userEcho });
+      }
       if (event.todoState) {
         this.post({ type: 'statusBar', todoState: event.todoState });
       }
@@ -1074,16 +1081,24 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
   }
 
   /** Open a file in VS Code editor when Hermes edits/reads it. */
-  private openFileInEditor(filePath: string, isEdit: boolean): void {
+  private openFileInEditor(filePath: string, isEdit: boolean, line?: number): void {
     try {
       const uri = vscode.Uri.file(filePath);
       vscode.workspace.openTextDocument(uri).then(doc => {
+        // ACP reports the line the tool touched; without it every click lands
+        // at the top of the file. Clamped, since the file may have changed.
+        const target = typeof line === 'number' && line > 0
+          ? new vscode.Range(
+            Math.min(line - 1, Math.max(doc.lineCount - 1, 0)), 0,
+            Math.min(line - 1, Math.max(doc.lineCount - 1, 0)), 0)
+          : undefined;
         vscode.window.showTextDocument(doc, {
           preserveFocus: true,  // keep focus on the chat panel
           preview: !isEdit,     // edits open as persistent tabs, reads as preview
           viewColumn: vscode.ViewColumn.One,
+          selection: target,
         });
-        this.log(`[ui] opened ${isEdit ? 'edited' : 'read'} file ${path.basename(filePath)}`);
+        this.log(`[ui] opened ${isEdit ? 'edited' : 'read'} file ${path.basename(filePath)}${target ? `:${line}` : ''}`);
       }, err => {
         this.log(`[ui] failed to open file: ${err}`);
       });

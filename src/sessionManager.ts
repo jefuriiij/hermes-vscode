@@ -32,7 +32,7 @@ import {
   extractTextContent, deduplicateChunk,
   parseToolCall, parseToolCallUpdate,
   parseUsageUpdate, parseSessionInfoUpdate, parseBackgroundProcessMeta, parseAutonomousTurnMeta,
-  parsePlanUpdate,
+  parsePlanUpdate, parseUsageFromPrompt,
   parseCompressionCount,
 } from './protocol';
 import { parseAgentActivities } from './agentActivity';
@@ -283,11 +283,12 @@ export class SessionManager {
       this.log(`[session] prompt ${sessionId} (${text.length} chars)`);
 
       turn.promptActive = true;
+      let promptResult: Record<string, unknown> | undefined;
       try {
-        await this.client.call('session/prompt', {
+        promptResult = (await this.client.call('session/prompt', {
           sessionId,
           prompt: buildPromptBlocks(text, mentions ?? []),
-        });
+        })) as Record<string, unknown>;
       } catch (err) {
         if (turn.cancelled) throw new Error('Cancelled');
         throw err;
@@ -297,8 +298,14 @@ export class SessionManager {
       // next queued turn while the cancelled request is still live remotely.
       if (turn.cancelled) throw new Error('Cancelled');
 
-      // PromptResponse usage is cumulative turn billing, not current context
-      // pressure. Context metrics arrive authoritatively via usage_update.
+      // PromptResponse usage is CUMULATIVE session billing, not a context
+      // snapshot — the suite's fixture reports 2.7M input tokens against a 1M
+      // window. Forwarding its cachedReadTokens would be mixed with
+      // usage_update's current `used` in menus.ts (fresh = used - cached) and
+      // produce a negative fresh count and a permanent 100% cache reading.
+      // parseUsageFromPrompt exists for per-turn billing display, which has no
+      // UI yet; deliberately not wired to the context meter.
+      void promptResult;
       this.log(`[session] prompt done ${sessionId}`);
       this.updateHandler?.({ session_id: sessionId, done: true });
     } finally {
@@ -426,6 +433,16 @@ export class SessionManager {
         break;
       }
 
+      case 'user_message_chunk': {
+        // Emitted when the adapter drains a queued prompt (server.py:980) and
+        // during session/load replay. Without this the reply to a queued
+        // message arrives with no visible question above it.
+        const text = extractTextContent(update);
+        if (!text) return;
+        event.userEcho = text;
+        break;
+      }
+
       case 'agent_thought_chunk': {
         if (this.activePromptTurn?.cancelled && this.activePromptTurn.sessionId === session_id) return;
         const text = extractTextContent(update);
@@ -448,7 +465,10 @@ export class SessionManager {
         )) {
           this.delegateToolCalls.add(`${session_id}\0${parsed.toolCallId}`);
         }
-        if (parsed.locations.length) event.toolLocations = parsed.locations;
+        if (parsed.locations.length) {
+          event.toolLocations = parsed.locations;
+          event.toolLocationLines = parsed.locationLines;
+        }
         if (parsed.detail) event.toolDetail = parsed.detail;
         if (parsed.content) event.toolContent = parsed.content;
         if (parsed.todoState) {

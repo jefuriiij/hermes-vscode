@@ -59,6 +59,8 @@ export interface ParsedToolCall {
   toolCallId?: string;
   kind: string;
   locations: string[];
+  /** Line each location points at, index-aligned with `locations`. */
+  locationLines: (number | undefined)[];
   detail?: string;
   todoState?: TodoState;
   /** Formatted tool output: results, diffs, command text. */
@@ -110,8 +112,12 @@ export function parseToolCall(update: RawUpdate): ParsedToolCall {
   const kind = (update.kind as string) ?? 'other';
 
   // Extract file paths from locations
-  const rawLocations = update.locations as { path?: string }[] | undefined;
-  const locations = rawLocations?.map(l => l.path).filter((p): p is string => !!p) ?? [];
+  const rawLocations = update.locations as { path?: string; line?: number }[] | undefined;
+  const located = rawLocations?.filter((l): l is { path: string; line?: number } => !!l.path) ?? [];
+  const locations = located.map(l => l.path);
+  // Kept index-aligned with `locations` so a click can reveal the exact line
+  // the tool touched instead of opening at the top of the file.
+  const locationLines = located.map(l => (typeof l.line === 'number' ? l.line : undefined));
 
   // Extract detail + todo state from rawInput
   let detail: string | undefined;
@@ -126,7 +132,34 @@ export function parseToolCall(update: RawUpdate): ParsedToolCall {
     }
   }
 
-  return { title, status, toolCallId, kind, locations, detail, todoState, content: extractToolContent(update) };
+  return { title, status, toolCallId, kind, locations, locationLines, detail, todoState, content: extractToolContent(update) };
+}
+
+/**
+ * Per-turn token usage from a `session/prompt` response.
+ *
+ * `acp_adapter/server.py:983` returns Usage on every PromptResponse. The
+ * return value was discarded, so `cachedTokens` was never populated and the
+ * status bar's cache share always read zero.
+ */
+export function parseUsageFromPrompt(
+  response: RawUpdate,
+): { contextUsed: number; cachedTokens?: number } | undefined {
+  const usage = response.usage as Record<string, unknown> | undefined;
+  if (!usage) return undefined;
+
+  const num = (...keys: string[]): number | undefined => {
+    for (const key of keys) {
+      const value = usage[key];
+      if (typeof value === 'number') return value;
+    }
+    return undefined;
+  };
+
+  const contextUsed = num('inputTokens', 'input_tokens');
+  if (contextUsed === undefined) return undefined;
+
+  return { contextUsed, cachedTokens: num('cachedReadTokens', 'cached_read_tokens') };
 }
 
 // ── Tool call update parsing ─────────────────────────

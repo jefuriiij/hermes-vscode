@@ -85,6 +85,8 @@ export interface SessionUpdateEvent {
   toolContent?: string;
   toolKind?: string;
   toolLocations?: string[];
+  /** Line each tool location points at, index-aligned with toolLocations. */
+  toolLocationLines?: (number | undefined)[];
   todoState?: TodoState;
   done?: boolean;
   error?: string;
@@ -97,6 +99,8 @@ export interface SessionUpdateEvent {
   contextUsed?: number;
   contextSize?: number;
   cachedTokens?: number;
+  /** A user message the agent echoed back, e.g. a drained queued prompt. */
+  userEcho?: string;
   compressionCount?: number;
   availableCommands?: AvailableSlashCommand[];
   agentActivities?: AgentActivity[];
@@ -112,7 +116,7 @@ export interface ToWebview {
     | 'append' | 'backgroundNotification' | 'thinking' | 'toolCall' | 'done'
     | 'error' | 'status' | 'notice' | 'clear' | 'busy' | 'queueState'
     | 'statusBar' | 'sessionList' | 'loadHistory' | 'profileList' | 'modelGroups'
-    | 'mentionSuggestions' | 'modeState';
+    | 'mentionSuggestions' | 'modeState' | 'userEcho';
   text?: string;
   toolName?: string;
   toolStatus?: string;
@@ -122,6 +126,8 @@ export interface ToWebview {
   toolContent?: string;
   toolKind?: string;
   toolLocations?: string[];
+  /** Line each tool location points at, index-aligned with toolLocations. */
+  toolLocationLines?: (number | undefined)[];
   todoState?: TodoState;
   backgroundProcesses?: BackgroundProcessState[];
   modelGroups?: ModelMenuGroup[];
