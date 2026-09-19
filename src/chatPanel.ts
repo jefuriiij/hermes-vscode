@@ -10,6 +10,8 @@ import * as path from 'path';
 import { SessionManager } from './sessionManager';
 import { SessionStore } from './sessionStore';
 import { loadHermesModelGroups, resolveModelGroups, ModelMenuGroup } from './modelCatalog';
+import { resolveModeOptions } from './modeCatalog';
+import { EDIT_APPROVAL_MODES, EditApprovalModeOption } from './editApprovalMode';
 import { loadHermesSkills, SkillGroup } from './skillCatalog';
 import { buildChatHtml, escapeHtml } from './htmlTemplate';
 import { profileDisplayName } from './profileUi';
@@ -79,6 +81,8 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
   private readonly store: SessionStore;
   private readonly fallbackModelGroups: ModelMenuGroup[] = loadHermesModelGroups();
   private modelGroups: ModelMenuGroup[] = this.fallbackModelGroups;
+  /** Modes ACP advertised, or the built-in table until a session replies. */
+  private modeOptions: readonly EditApprovalModeOption[] = EDIT_APPROVAL_MODES;
   private readonly skillGroups: SkillGroup[] = loadHermesSkills();
 
   private selectedSkills: string[] = [];
@@ -214,6 +218,11 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
           this.modelGroups = resolved;
           this.post({ type: 'modelGroups', modelGroups: resolved });
         }
+      }
+      // Modes are authoritative the same way: the built-in table matches what
+      // Hermes ships today and goes stale the moment a mode is added or renamed.
+      if (event.modeState && this.isActiveRuntimeSession(event.session_id)) {
+        this.modeOptions = resolveModeOptions(event.modeState);
       }
       if ((event.model || event.sessionTitle || event.contextUsed !== undefined || event.compressionCount !== undefined)
         && this.isActiveRuntimeSession(event.session_id)) {
@@ -1058,6 +1067,15 @@ export class ChatPanelProvider implements vscode.WebviewViewProvider, vscode.Dis
     return normalizedFile.startsWith(normalizedRoot) && allowedExt.has(path.extname(normalizedFile).toLowerCase());
   }
 
+
+  /**
+   * Modes the running agent advertised, or the built-in table before any
+   * session has replied. The Command Palette picker reads this so it lists
+   * what Hermes actually offers rather than a compiled-in copy.
+   */
+  public get editApprovalModeOptions(): readonly EditApprovalModeOption[] {
+    return this.modeOptions;
+  }
 
   public refreshProfileState(): void {
     this.broadcastProfileState();

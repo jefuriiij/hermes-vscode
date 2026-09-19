@@ -225,6 +225,7 @@ export class SessionManager {
     })) as {
       sessionId: string;
       models?: { currentModelId?: string; availableModels?: { modelId?: string; name?: string }[] };
+      modes?: { currentModeId?: string; availableModes?: { id?: string; name?: string; description?: string }[] };
     };
     this.assertBindingCurrent(generation);
 
@@ -236,11 +237,13 @@ export class SessionManager {
     // Emit initial model from session/new response. `models` also carries the
     // authenticated inventory, which is the only source that knows about local,
     // custom, and named-endpoint providers — forward it so the picker stops
-    // relying on a hardcoded list.
+    // relying on a hardcoded list. `modes` is authoritative the same way.
     const model = result.models?.currentModelId;
     const modelState = result.models;
-    if ((model || modelState?.availableModels?.length) && this.updateHandler) {
-      this.updateHandler({ session_id: this.sessionId, model, modelState });
+    const modeState = result.modes;
+    if ((model || modelState?.availableModels?.length || modeState?.availableModes?.length)
+      && this.updateHandler) {
+      this.updateHandler({ session_id: this.sessionId, model, modelState, modeState });
     }
 
     return this.sessionId;
