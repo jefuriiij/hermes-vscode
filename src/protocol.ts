@@ -104,6 +104,31 @@ export function isToolFailure(status: string | undefined): boolean {
   return status === 'failed' || status === 'error';
 }
 
+/**
+ * Whether a `session/load` response means the session actually loaded.
+ *
+ * `acp_adapter/server.py:615` returns Python `None` for a missing session, but
+ * the JSON-RPC layer serialises that as `"result": {}` — not null. A
+ * `result !== null` check therefore passes, the client logs "resumed", and the
+ * next `session/prompt` is sent to a session the agent never heard of. It
+ * answers `{"stopReason":"refusal"}` with no updates, so the chat accepts
+ * input and silently never replies.
+ *
+ * A real LoadSessionResponse always carries session fields, so a response with
+ * no keys means not-found.
+ */
+export function isSessionLoaded(result: unknown): boolean {
+  if (result === null || result === undefined) return false;
+  if (typeof result !== 'object') return false;
+  return Object.keys(result as Record<string, unknown>).length > 0;
+}
+
+/** Whether a `session/prompt` response was refused outright (dead session). */
+export function isPromptRefused(result: unknown): boolean {
+  if (!result || typeof result !== 'object') return false;
+  return (result as { stopReason?: unknown }).stopReason === 'refusal';
+}
+
 /** Parse a tool_call update into typed fields. */
 export function parseToolCall(update: RawUpdate): ParsedToolCall {
   const title = (update.title as string) ?? 'tool';

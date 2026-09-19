@@ -32,7 +32,7 @@ import {
   extractTextContent, deduplicateChunk,
   parseToolCall, parseToolCallUpdate,
   parseUsageUpdate, parseSessionInfoUpdate, parseBackgroundProcessMeta, parseAutonomousTurnMeta,
-  parsePlanUpdate, parseUsageFromPrompt,
+  parsePlanUpdate, parseUsageFromPrompt, isSessionLoaded, isPromptRefused,
   parseCompressionCount,
 } from './protocol';
 import { parseAgentActivities } from './agentActivity';
@@ -196,8 +196,10 @@ export class SessionManager {
           mcpServers: [],
         });
         this.assertBindingCurrent(generation);
-        // Adapter returns null when session not found — load_session() → None
-        if (result !== null && result !== undefined) {
+        // The adapter answers a missing session with `{}`, not null (see
+        // isSessionLoaded), so an emptiness check is what distinguishes a real
+        // resume from a silent failure.
+        if (isSessionLoaded(result)) {
           loaded = true;
           this.log(`[session] resumed ${storedId}`);
         } else {
@@ -297,6 +299,14 @@ export class SessionManager {
       // terminal response. This barrier prevents the caller from draining its
       // next queued turn while the cancelled request is still live remotely.
       if (turn.cancelled) throw new Error('Cancelled');
+
+      // A refusal means the agent has no such session, so no updates were ever
+      // sent. Without this the turn "completes" having rendered nothing.
+      if (isPromptRefused(promptResult)) {
+        this.sessionId = null;
+        this.log('[session] prompt refused — session gone on the agent; cleared for rebind');
+        throw new Error('That session no longer exists on the agent. Send again to start a new one.');
+      }
 
       // PromptResponse usage is CUMULATIVE session billing, not a context
       // snapshot — the suite's fixture reports 2.7M input tokens against a 1M
