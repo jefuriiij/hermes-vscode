@@ -271,6 +271,12 @@ const CSS_TEMPLATE = /* css */ `
     }
     #status-context.warn { color: var(--gold); opacity: 1; }
     #status-context.crit { color: #C94040; opacity: 1; }
+    /* Prompt-cache share: a cost signal, so it sits quietly beside the
+       window headline rather than competing with it. */
+    .tok-cache {
+      opacity: 0.55; font-size: 0.92em;
+      color: var(--vscode-gitDecoration-addedResourceForeground, #89d185);
+    }
 
     #agent-activity-bar {
       display: flex; align-items: center; gap: 5px;
