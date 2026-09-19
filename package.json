@@ -91,7 +91,7 @@
       }
     ],
     "viewsContainers": {
-      "activitybar": [
+      "auxiliarybar": [
         {
           "id": "hermes",
           "title": "Hermes Agent",
@@ -99,6 +99,13 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "hermes.openChat",
+        "key": "ctrl+shift+h",
+        "mac": "cmd+shift+h"
+      }
+    ],
     "views": {
       "hermes": [
         {
