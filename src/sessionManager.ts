@@ -32,6 +32,7 @@ import {
   extractTextContent, deduplicateChunk,
   parseToolCall, parseToolCallUpdate,
   parseUsageUpdate, parseSessionInfoUpdate, parseBackgroundProcessMeta, parseAutonomousTurnMeta,
+  parsePlanUpdate,
   parseCompressionCount,
 } from './protocol';
 import { parseAgentActivities } from './agentActivity';
@@ -494,6 +495,15 @@ export class SessionManager {
         const title = parseSessionInfoUpdate(update);
         if (title) event.sessionTitle = title;
         else if (!event.agentActivities && event.compressionCount === undefined) return;
+        break;
+      }
+
+      case 'plan': {
+        // Hermes' native plan channel. Without this the only plans that ever
+        // reached the UI were the ones scraped out of streamed text.
+        const todos = parsePlanUpdate(update);
+        if (todos === null) return;
+        event.todoState = { todos };
         break;
       }
 
