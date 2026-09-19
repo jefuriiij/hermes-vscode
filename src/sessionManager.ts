@@ -222,7 +222,10 @@ export class SessionManager {
     const result = (await this.client.call('session/new', {
       cwd,
       mcpServers: [],
-    })) as { sessionId: string; models?: { currentModelId?: string } };
+    })) as {
+      sessionId: string;
+      models?: { currentModelId?: string; availableModels?: { modelId?: string; name?: string }[] };
+    };
     this.assertBindingCurrent(generation);
 
     this.sessionId = result.sessionId;
@@ -230,10 +233,14 @@ export class SessionManager {
     await this.applyEditApprovalMode(this.sessionId);
     this.assertBindingCurrent(generation);
 
-    // Emit initial model from session/new response
+    // Emit initial model from session/new response. `models` also carries the
+    // authenticated inventory, which is the only source that knows about local,
+    // custom, and named-endpoint providers — forward it so the picker stops
+    // relying on a hardcoded list.
     const model = result.models?.currentModelId;
-    if (model && this.updateHandler) {
-      this.updateHandler({ session_id: this.sessionId, model });
+    const modelState = result.models;
+    if ((model || modelState?.availableModels?.length) && this.updateHandler) {
+      this.updateHandler({ session_id: this.sessionId, model, modelState });
     }
 
     return this.sessionId;

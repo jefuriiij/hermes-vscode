@@ -145,6 +145,23 @@ export function buildModelGroups(state: AcpModelState | undefined): ModelMenuGro
   return groups;
 }
 
+/**
+ * Choose which inventory the picker shows.
+ *
+ * Live ACP state wins outright whenever it carries anything — it is the only
+ * source that knows about local, custom, and named-endpoint providers. The
+ * fallback covers the window before the first session/new response arrives.
+ * The two are never merged: appending a stale hardcoded list to the
+ * authoritative one would resurrect models the server did not offer.
+ */
+export function resolveModelGroups(
+  state: AcpModelState | undefined,
+  fallback: ModelMenuGroup[],
+): ModelMenuGroup[] {
+  const live = buildModelGroups(state);
+  return live.length > 0 ? live : fallback;
+}
+
 function readCache(): HermesModelCache | null {
   const cachePath = path.join(os.homedir(), '.hermes', 'models_dev_cache.json');
   try {
