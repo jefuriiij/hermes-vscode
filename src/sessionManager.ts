@@ -48,6 +48,16 @@ interface PromptTurn {
   promptActive: boolean;
 }
 
+/**
+ * The session fields acp_adapter/server.py:_session_response_fields returns.
+ * `session/new` and `session/load` answer with the same shape.
+ */
+interface AcpSessionResponse {
+  sessionId?: string;
+  models?: { currentModelId?: string; availableModels?: { modelId?: string; name?: string }[] };
+  modes?: { currentModeId?: string; availableModes?: { id?: string; name?: string; description?: string }[] };
+}
+
 export class SessionManager {
   private sessionId: string | null = null;
   private updateHandler: SessionUpdateHandler | null = null;
@@ -146,6 +156,31 @@ export class SessionManager {
     this.log(`[session] edit approval mode ${this.editApprovalMode}`);
   }
 
+  /**
+   * Forward the catalogs an ACP session response carries.
+   *
+   * `session/new` and `session/load` return the same `models`/`modes` shape
+   * (acp_adapter/server.py:_session_response_fields), so both paths emit
+   * through here. An absent inventory stays absent: emitting an empty catalog
+   * would blank a working picker on an adapter too old to send one.
+   */
+  private emitCatalogs(result: AcpSessionResponse): void {
+    const modelState = result.models;
+    const modeState = result.modes;
+    const hasModels = !!modelState?.availableModels?.length;
+    const hasModes = !!modeState?.availableModes?.length;
+    // A currentModelId with no list behind it is not an inventory: emitting it
+    // would replace a populated picker with an empty one.
+    if (!hasModels && !hasModes) return;
+    if (!this.updateHandler || !this.sessionId) return;
+    this.updateHandler({
+      session_id: this.sessionId,
+      model: modelState?.currentModelId,
+      modelState,
+      modeState,
+    });
+  }
+
   async ensureSession(cwd: string): Promise<string> {
     if (this.sessionId) {
       this.log(`[session] reusing ${this.sessionId}`);
@@ -182,6 +217,7 @@ export class SessionManager {
       const storedId = this.storedSessionId;
       this.storedSessionId = null;
       let loaded = false;
+      let loadedCatalogs: AcpSessionResponse | undefined;
       const replayBinding = { sessionId: storedId, generation };
       try {
         this.log(`[session] attempting session/load ${storedId}`);
@@ -201,6 +237,7 @@ export class SessionManager {
         // resume from a silent failure.
         if (isSessionLoaded(result)) {
           loaded = true;
+          loadedCatalogs = result as AcpSessionResponse;
           this.log(`[session] resumed ${storedId}`);
         } else {
           this.sessionId = null;
@@ -216,6 +253,9 @@ export class SessionManager {
       if (loaded) {
         await this.applyEditApprovalMode(storedId);
         this.assertBindingCurrent(generation);
+        // After the replay events, so a resumed window's last event is still the
+        // replayed history rather than a catalog refresh.
+        if (loadedCatalogs) this.emitCatalogs(loadedCatalogs);
         return storedId;
       }
       // Fall through to session/new
@@ -226,11 +266,7 @@ export class SessionManager {
     const result = (await this.client.call('session/new', {
       cwd,
       mcpServers: [],
-    })) as {
-      sessionId: string;
-      models?: { currentModelId?: string; availableModels?: { modelId?: string; name?: string }[] };
-      modes?: { currentModeId?: string; availableModes?: { id?: string; name?: string; description?: string }[] };
-    };
+    })) as AcpSessionResponse & { sessionId: string };
     this.assertBindingCurrent(generation);
 
     this.sessionId = result.sessionId;
@@ -242,13 +278,7 @@ export class SessionManager {
     // authenticated inventory, which is the only source that knows about local,
     // custom, and named-endpoint providers — forward it so the picker stops
     // relying on a hardcoded list. `modes` is authoritative the same way.
-    const model = result.models?.currentModelId;
-    const modelState = result.models;
-    const modeState = result.modes;
-    if ((model || modelState?.availableModels?.length || modeState?.availableModes?.length)
-      && this.updateHandler) {
-      this.updateHandler({ session_id: this.sessionId, model, modelState, modeState });
-    }
+    this.emitCatalogs(result);
 
     return this.sessionId;
   }
